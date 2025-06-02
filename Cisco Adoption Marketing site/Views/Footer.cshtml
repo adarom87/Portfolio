@@ -1,0 +1,88 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        ICMSElement[] footerMenuLists = Model.Elements("ComponentMenuList", "MenuList").ToArray();
+        ICMSLinkElement[] footerResourceLinks = Model.GetLinkItems("FooterResourceLink").ToArray();
+        ICMSElement[] socialIcons = Model.Elements("ComponentIconLink", "IconLink").ToArray();
+        string copyright = Model.GetElementValue("CopyrightInfo");
+
+        <div id="footer">
+            <footer>
+                <div class="footer-content">
+                    <div class="container">
+                        @if (footerMenuLists.Any())
+                        {
+                            <div class="row">
+                                @{
+                                    ViewData["IsFooter"] = "true";
+                                    Html.RenderPartial("PageLayout/ComponentList", footerMenuLists);
+                                    ViewData["IsFooter"] = null;
+                                }
+                            </div>
+                        }
+                        <div class="spacer-40"></div>
+                        <div class="row">
+                            @if (footerResourceLinks.Any())
+                            {
+                                <div class="col-md order-md-2">
+                                    <div class="legal">
+                                        <ul>
+                                            @foreach (ICMSLinkElement link in footerResourceLinks)
+                                            {
+                                                <li>
+                                                    @_Helpers.RenderCMSLink(link, Url)
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                </div>
+                            }
+                            @*
+                                // TODO: language select and sign-in out of phase1 scope
+
+                                 <div class="col-md-auto order-md-3">
+                                     <div class="country">
+                                         <p>
+                                             <a href="#country-footer">
+                                                 <span class="icon-global"></span>
+                                                 United States
+                                                 <span class="icon-open"></span>
+                                             </a>
+                                         </p>
+                                     </div>
+                                 </div>
+                            *@
+                            @if (socialIcons.Any() || !string.IsNullOrWhiteSpace(copyright))
+                            {
+                                <div class="col-md-6 order-md-1">
+                                    @if (socialIcons.Any())
+                                    {
+                                        <div class="social">
+                                            @{ Html.RenderPartial("PageLayout/ComponentList", socialIcons); }
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(copyright))
+                                    {
+                                        <div class="copyright">
+                                            <p>@copyright</p>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+                @*@_Cisco_Helpers.RenderCountrySelect(isHeader: false)*@
+            </footer>
+        </div>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

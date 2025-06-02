@@ -1,0 +1,116 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        ICMSLinkElement[] sectionPages = Model.GetLinkItems("SectionPage").ToArray();
+        ICMSElement[] groupedTrayWrappers = Model.Elements(null, "Tray").ToArray();
+        string groupedTrayWrapperSpacing = Model.GetElementValue("SectionLinkSpacing").Trim();
+        string trayHtmlId = Model.GetElementValue("TrayID");
+
+        bool hideSubNav = Model.GetElementValue("HideSubNavigation").ToLower() == "true";
+        bool hideSideNav = Model.GetElementValue("HideSideNavigation").ToLower() == "true";
+
+        string layoutClass = hideSideNav ? string.Empty : "sidebar-layout";
+        string jsHelper = hideSideNav ? string.Empty : "js--is-section-grouper";
+
+        if (!_Cisco_Functions.RenderGrouperTray(sectionPages, Model))
+        {
+            // the page that is erroring must be included in the section pages element of this tray.
+            throw new Exception(string.Format("{0} is not included in Section Pages", Model.Page.ID));
+        }
+
+        if (!hideSubNav && sectionPages.Any())
+        {
+            <div class="d-none d-lg-block">
+                <section class="tray tray-section-nav gray-20 white-text">
+                    <div class="container">
+                        <ul class="section-nav modular-gap" @_Cisco_Helpers.HtmlAttribute("style", "gap: " + groupedTrayWrapperSpacing)>
+                            @foreach (ICMSLinkElement page in sectionPages)
+                            {
+                                string active = page.ID == Model.Page.ID ? "on" : string.Empty;
+
+                                <li>
+                                    <a @_Cisco_Helpers.HtmlAttribute("class", active) href="@_Functions.GetLinkAction(page, Url)">
+                                      @page.LinkName
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </section>
+            </div>
+        }
+
+        <div @_Cisco_Helpers.HtmlAttribute("class", layoutClass, jsHelper) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+            <div class="container">
+                @if (!hideSideNav && sectionPages.Any())
+                {
+                    <div class="sticky-wrap">
+                        <div class="sticky-inner">
+                            @foreach (ICMSLinkElement page in sectionPages)
+                            {
+                                bool renderSubNavigation = groupedTrayWrappers.Any() && page.ID == Model.Page.ID;
+
+                                if (renderSubNavigation)
+                                {
+                            <ul class="side-nav js--grouper-sidenav grouper-sidenav">
+                                @foreach (ICMSElement trayWrapper in groupedTrayWrappers)
+                                {
+                                    string sideNavLinkText = trayWrapper.GetElementValue("SideNavigationLinkText");
+                                    ICMSElement tray = trayWrapper.Element(null, "GroupedTray");
+
+                                    if (!String.IsNullOrWhiteSpace(sideNavLinkText))
+                                    {
+                                        <li>
+                                            <a class="nav-link" target="_blank" href="#section-@trayWrapper.GetHashCode()">@sideNavLinkText</a>
+                                        </li>
+                                    }
+                                    else if (!tray.GetElementValue("TrayHeading").IsNullOrEmpty())
+                                    {
+                                        string trayHeading = tray != null ? tray.GetElementValue("TrayHeading") : "";
+                                        <li>
+                                            <a class="nav-link" href="#section-@trayWrapper.GetHashCode()">@trayHeading</a>
+                                        </li>
+                                    }
+                                }
+                            </ul>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (groupedTrayWrappers.Any())
+            {
+                foreach (ICMSElement trayWrapper in groupedTrayWrappers)
+                {
+                    ICMSElement tray = trayWrapper.Element(null, "GroupedTray");
+
+                    try
+                    {
+                        <div id="section-@trayWrapper.GetHashCode()"
+                             class="scroll-to-point js--scroll-point">
+                        </div>
+                        Html.RenderPartial("Editable/" + tray.RootElementName, tray);
+                    }
+                    catch (Exception e)
+                    {
+                        @(tray.IsPreview ? e.Message : string.Empty)
+                        @LoggerService.LogViewError(tray, e)
+                    }
+                }
+            }
+        </div>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

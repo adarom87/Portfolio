@@ -1,0 +1,42 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        @* custom styles and scripts handled in _layout/_cisco_helpers *@
+        string trayId = Model.GetElementValue("TrayID");
+        string trayClass = Model.GetElementValue("TrayClass");        
+        ICMSElement trayHtmlEl = Model.Element("TrayHTML");
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string trayBgColor = styles.Get("TrayBGColor");
+        string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+        string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+        string textColor = styles.Get("TextColor");
+
+        if (trayHtmlEl != null)
+        {
+        <section @_Cisco_Helpers.HtmlAttribute("id", trayId) class="tray @trayClass @trayBgColor @textColor">
+
+            <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation opacity-70"></div>
+
+            <div class="container">
+                
+                @{ Html.RenderPartial("Editable/RawHtml", trayHtmlEl); }
+
+            </div>
+        </section>
+                }
+            }
+            catch (Exception e)
+            {
+                @LoggerService.LogViewError(Model, e)
+            }
+        }

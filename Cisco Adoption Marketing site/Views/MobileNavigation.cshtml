@@ -1,0 +1,101 @@
+﻿@model Ingeniux.Runtime.ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        ICMSLinkElement[] resourceLinks = Model.GetNavigationItems("HeaderResourceLinks", NavigationElementType.LinkSet).ToArray();
+
+        ICMSElement[] navigationTabs = Model.Elements("ComponentNavigationTab").ToArray();
+        ICMSLinkElement searchLink = Model.GetLinkItem("SearchResultsPage");
+        ICMSLinkElement helpCenterLink = Model.GetLinkItem("HelpCenterPage");
+
+        string phoneNumber = Model.GetElementValue("PhoneNumber");
+
+        <nav id="nav-mobile">
+            <div class="nav-mobile-content">
+                <a class="close-menu" href="#" title="Close menu">
+                    <span class="icon-close"></span>
+                </a>
+                <div class="container">
+                    @if (helpCenterLink != null)
+                    {
+                        <p>
+                            <span>
+                                @_Helpers.RenderCMSLink(helpCenterLink, Url)
+                            </span>
+                        </p>
+                    }
+                    else
+                    {
+                        <div class="spacer-48"></div>
+                    }
+
+                    @* mobile search *@
+                    <form class="form-search" action="@_Functions.GetLinkAction(searchLink, Url)">
+                        <label>
+                            <span class="visually-hidden">Search</span>
+                            <input type="text" placeholder="Search" name="terms">
+                        </label>
+                        <button type="submit" aria-label="Submit Search">
+                            <img src="~/Content/assets/img/icons/search.svg" alt="Search">
+                        </button>
+                        <button type="button" aria-label="Cancel Search">
+                            <span class="icon-close"></span>
+                        </button>
+                    </form>
+
+                    <div class="spacer-16"></div>
+
+                    @if (navigationTabs.Any())
+                    {
+                        <div class="menu-items">
+                            @foreach (ICMSElement tab in navigationTabs)
+                            {
+                                string menuAnchorText = tab.GetElementValue("MenuAnchorText");
+                                ICMSElement[] menuItems = _Cisco_Functions.GetNavigationTabMenuItems(tab);
+
+                                <div class="item parent">
+                                    <a href="javascript:;">
+                                        @menuAnchorText
+                                        <span class="icon-close"></span>
+                                    </a>
+                                    @if (menuItems != null && menuItems.Any())
+                                    {
+                                        <div class="content">
+                                            <div class="spacer-24"></div>
+                                            @{
+                                                ViewData["IsMobile"] = "true";
+                                                Html.RenderPartial("PageLayout/ComponentList", menuItems);
+                                                ViewData["IsMobile"] = null;
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    <div class="spacer-40"></div>
+                    <div class="sub-menu-items">
+                        @if (resourceLinks.Any())
+                        {
+                            foreach (ICMSLinkElement link in resourceLinks)
+                            {
+                                <div class="item">
+                                    @_Helpers.RenderCMSLink(link, Url)
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </nav>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

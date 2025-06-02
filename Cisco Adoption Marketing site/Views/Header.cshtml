@@ -1,0 +1,159 @@
+﻿@model Ingeniux.Runtime.ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        string baseUrl = _Cisco_Functions.BaseUrl();
+
+        ICMSLinkElement[] resourceLinks = Model.GetLinkItems("HeaderResourceLink").ToArray();
+        ICMSElement logoImage = Model.Element("ImageAsset", "Logo");
+        ICMSElement[] navigationTabs = Model.Elements("ComponentNavigationTab").ToArray();
+        ICMSLinkElement searchLink = Model.GetLinkItem("SearchResultsPage");
+        ICMSLinkElement helpCenterLink = Model.GetLinkItem("HelpCenterPage");
+        ICMSLinkElement downloadLink = Model.GetLinkItem("DownloadLink");
+
+        string phoneNumber = Model.GetElementValue("PhoneNumber");
+
+        <div id="header">
+            <header>
+                <div class="top-content">
+                    <div class="container">
+                        <a class="skip-to-content" href="#content">Skip to Content</a>
+                        @if (resourceLinks.Any() || !string.IsNullOrWhiteSpace(phoneNumber))
+                        {
+                            <ul>
+                                @if (resourceLinks.Any())
+                                {
+                                    foreach (ICMSLinkElement link in resourceLinks)
+                                    {
+                                        <li>@_Helpers.RenderCMSLink(link, Url)</li>
+                                    }
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(phoneNumber))
+                                {
+                                    <li>
+                                        <span aria-label="phone @phoneNumber">
+                                            <a href="tel:@phoneNumber">@phoneNumber</a>
+                                        </span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                </div>
+
+                <div class="header-content">
+                    <div class="container">
+                        <div class="row row-gutter-0 align-items-center">
+                            <div class="col-auto">
+                                <a class="logo" href="@baseUrl">
+                                    @_Cisco_Helpers.RenderImageAsset(logoImage, Url)
+                                </a>
+                            </div>
+
+                            @* desktop nav *@
+                            @if (navigationTabs.Any())
+                            {
+                                <div class="col">
+                                    <ul class="nav-links">
+                                        @foreach (ICMSElement tab in navigationTabs)
+                                        {
+                                            string menuAnchorText = tab.GetElementValue("MenuAnchorText");
+                                            <li class="parent">
+                                                <a href="#mega-@tab.GetHashCode()" target="_blank">
+                                                    @menuAnchorText
+                                                    <span class="icon-open"></span>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="col-auto">
+                                <ul class="nav-links">
+                                    <li class="link-search">
+                                        <a class="toggle-search" href="javascript:;" title="search">
+                                            <img src="~/Content/assets/img/icons/search.svg" alt="Search">
+                                        </a>
+                                    </li>
+                                    
+                                    @if (helpCenterLink != null)
+                                    {
+                                        <li>
+                                            @_Helpers.RenderCMSLink(helpCenterLink, Url)
+                                        </li>
+                                    }
+
+                                    @if (downloadLink != null)
+                                    {
+                                        <li>
+                                            @_Helpers.RenderCMSLink(downloadLink, Url)
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+
+                        @* desktop search *@
+                        <form class="form-search" action="@_Functions.GetLinkAction(searchLink, Url)">
+                            <label>
+                                <span class="visually-hidden">Search</span>
+                                <input type="text" placeholder="Search" name="terms">
+                            </label>
+                            <button type="submit" aria-label="Submit Search">
+                                <img src="~/Content/assets/img/icons/search.svg" alt="Search">
+                            </button>
+                            <button type="button" aria-label="Cancel Search">
+                                <span class="icon-close"></span>
+                            </button>
+                        </form>
+
+                        @* mobile nav toggle *@
+                        <a class="toggle-menu" href="#" title="Toggle menu">
+                            <span class="bars">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+
+                @* desktop nav mega flyout *@
+                <div>
+                    <div class="mega-content">
+                        @if (navigationTabs.Any())
+                        {
+                            foreach (ICMSElement tab in navigationTabs)
+                            {
+                                ICMSElement[] menuItems = _Cisco_Functions.GetNavigationTabMenuItems(tab);
+
+                                <div id="mega-@tab.GetHashCode()" class="mega">
+                                    <div class="container">
+                                        <div class="row grid-wrap">
+                                            @if (menuItems != null && menuItems.Any())
+                                            {
+                                                ViewData["IsHeader"] = "true";
+                                                Html.RenderPartial("PageLayout/ComponentList", menuItems);
+                                                ViewData["IsHeader"] = null;
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </header>
+        </div>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

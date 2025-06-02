@@ -1,0 +1,140 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+    // ice
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    ICMSElement image = Model.Element("ImageAsset", "Image");
+    ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+
+    string url = null;
+
+    if (cta != null)
+    {
+      url = cta.URL; // Get the URL from the cta object
+    }
+
+    /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    Dictionary<String, String> buttonStyles;
+
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+    int buttonNumber = 0;
+
+    string buttonBgColor = "";
+    string buttonTextColor = "";
+    string buttonBorderColor = "";
+    string buttonBgColorHover = "";
+    string buttonTextColorHover = "";
+    string buttonBorderColorHover = "";
+
+    bool showCtaText = false;
+    string linkIcon = "";
+
+    string iconClass = "";
+
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayTextColor = styles.Get("TextColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+
+    if (!trayBgGradientColor.IsNullOrEmpty() || trayBgGradientColor != "")
+    {
+      trayBgColor = "";
+    }
+
+
+        <section class="tray tray-announcement" @_Helpers.RenderICEAttribute(Model, true)>
+          <div class="container">
+
+            @if (hasCopy)
+            {
+              <div class="announcement @trayBgColor @trayTextColor">
+                <div class="tray-gradient @trayBgGradientColor"></div>
+                @if (image != null)
+                {
+                  <div class="bg-img">
+                    @_Cisco_Helpers.RenderImageAsset(image, Url)
+                  </div>
+                }
+                <div class="content">
+                  <div class="row align-items-center">
+                    @if (hasCopy)
+                    {
+                      <div class="col" style="z-index: 1;">
+                        <div class="copy">
+                          @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+                        </div>
+                      </div>
+                    }
+
+                    @if (cta != null)
+                    {
+
+                      buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+                      buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                      buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                      buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                      buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                      buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                      buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                      showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                      linkIcon = buttonStyles.Get("LinkIcon");
+
+                      iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+
+                      <div class="col-auto" style="z-index: 1;">
+                        @_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+
+
+            @if (!hasCopy)
+            {
+              if (image != null)
+              {
+                if (cta != null)
+                {
+                  <a href="@cta.URL" target="@cta.GetAttributeValue("Target")">
+                    <div class="CTA-NOT-NULL announcement-img-full">
+                      <img src="@image.Element("ImageCMS").GetAttributeValue("Asset")" />
+                    </div>
+                  </a>
+                }
+
+                if (cta == null)
+                {
+                  <div class="CTA-WAS-NULL announcement-img-full">
+                    @_Cisco_Helpers.RenderImageAsset(image, Url)
+                  </div>
+                }
+              }
+            }
+
+
+
+          </div>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

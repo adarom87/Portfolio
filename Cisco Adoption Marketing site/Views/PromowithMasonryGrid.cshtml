@@ -1,0 +1,198 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // ice elements
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    string heading = Model.GetElementValue("TrayHeading");
+    string leadinText = Model.GetElementValue("TrayLeadinText");
+
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+    string trayHtmlId = Model.GetElementValue("TrayID");
+    ICMSElement[] cards = Model.Elements("ComponentCard", "Card") != null ? Model.Elements("ComponentCard", "Card").ToArray() : Array.Empty<ICMSElement>();
+    ICMSElement columnCard = cards.FirstOrDefault();
+    ICMSElement[] rowCards = cards.Where(c => c != columnCard).ToArray();
+
+    bool allCardsSingleCta = _Cisco_Functions.AllCardsHaveSingleCta(cards);
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    string headingColor = styles.Get("HeadingColor");
+    string headingGradientColor = styles.Get("HeadingGradientColor");
+    string trayTextColor = styles.Get("TextColor");
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+
+    bool stackLeft = Model.GetElementValue("StackLeft").ToLower() == "true";
+    string leftColClass = stackLeft ? "order-2" : "order-1";
+    string rightColClass = stackLeft ? "order-1" : "order-2";
+
+    <section @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId) class="tray tray-simple @trayBgColor @trayTextColor" @_Helpers.RenderICEAttribute(Model, true)>
+      <div class="bg-radial opacity-70 @trayBgGradientColor @trayBgGradientOrientation"></div>
+      <div class="container">
+
+        <div class="row justify-content-between">
+          <div class="col-md-12">
+            @if (!string.IsNullOrWhiteSpace(heading))
+            {
+              <h2 @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor) @_Helpers.RenderICEAttribute(headingEl)>
+                @_Cisco_Functions.AllowHtmlInTextElement(heading)
+              </h2>
+            }
+          </div>
+        </div>
+
+        @if (hasCopy)
+        {
+          <div class="row">
+            <div class="col-md font-size-lg restrict-66">
+              @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+            </div>
+          </div>
+        }
+
+        <div class="row masonry-row">
+
+          @if (columnCard != null)
+          {
+            if (_Cisco_Functions.IsDebug() && cards.Count() > 3)
+            {
+              <!-- Rendered 3 (max) of @cards.Count() cards -->
+            }
+
+            // ice
+            ICMSElement titleEl = columnCard.Element("CardTitle");
+            ICMSElement introTextEl = columnCard.Element("IntroText");
+
+            ICMSElement image = columnCard.Element("ImageAsset", "Image");
+            string title = columnCard.GetElementValue("CardTitle");
+            ICMSLinkElement[] ctas = columnCard.GetLinkItems("CalltoAction").ToArray();
+
+            // styles
+            Dictionary<String, String> colCardStyles = ComponentVariationWrapper.GetCustomStyles(columnCard);
+
+            string cardBgColor = colCardStyles.Get("CardBGColor");
+            string textColor = colCardStyles.Get("TextColor");
+            string linkIcon = colCardStyles.Get("LinkIcon");
+
+            string ctaDefaultClass = cardBgColor.Equals("gray-d2") ? "button-white" : "button-gray-d2";
+            string ctaHoverClass = cardBgColor.Equals("eucalyptus") ? "button-hover-white" : string.Empty;
+
+            <div class="col-lg-4 @leftColClass">
+              <div class="card-wrap padding-bot-40px">
+                <div class="card-inner @cardBgColor @textColor">
+                  <div class="content">
+                    <div class="row align-items-center">
+                      @if (image != null)
+                      {
+                        <div class="col-md-6 col-lg-12 d-flex justify-content-lg-center">
+                          <p class="img-wrap">
+                            @_Cisco_Helpers.RenderImageAsset(image, Url)
+                          </p>
+                        </div>
+                      }
+                    <div class="col-md-6 col-lg-12">
+                      @if (!string.IsNullOrWhiteSpace(title))
+                      {
+                        <p class="h5" @_Helpers.RenderICEAttribute(titleEl)>@title</p>
+                      }
+
+                      @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+
+                      @if (ctas.Any())
+                      {
+                        @_Cisco_Helpers.RenderCardMultiCtaList(ctas, Url)
+                      }
+                    </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+
+          @if (rowCards.Any())
+          {
+            // TODO: austin - add to schema?
+            var cardImageOnLeft = false;
+
+            <div class="col-lg-8 @rightColClass">
+
+              @* force maximum 3 cards *@
+              @foreach (ICMSElement card in rowCards.Take(2))
+              {
+                string orderClass = cardImageOnLeft ? "order-md-1" : "order-md-2";
+                string imgJustify = cardImageOnLeft ? string.Empty : "justify-content-end";
+
+                // ice
+                ICMSElement titleEl = card.Element("CardTitle");
+                ICMSElement introTextEl = card.Element("IntroText");
+
+                ICMSElement image = card.Element("ImageAsset", "Image");
+                string title = card.GetElementValue("CardTitle");
+                ICMSLinkElement[] ctas = card.GetLinkItems("CalltoAction").ToArray();
+
+                // styles
+                Dictionary<String, String> stackedCardStyles = ComponentVariationWrapper.GetCustomStyles(card);
+
+                string cardBgColor = stackedCardStyles.Get("CardBGColor");
+                string textColor = stackedCardStyles.Get("TextColor");
+                string linkIcon = stackedCardStyles.Get("LinkIcon");
+
+                string ctaDefaultClass = cardBgColor.Equals("gray-d2") ? "button-white" : "button-gray-d2";
+                string ctaHoverClass = cardBgColor.Equals("eucalyptus") ? "button-hover-white" : string.Empty;
+
+                <div class="card-wrap card-lg-50 padding-bot-40px">
+                  <div class="card-inner @cardBgColor @textColor">
+                    <div class="content">
+                      <div class="row align-items-center">
+                        @if (image != null)
+                        {
+                          <div class="col-md-6 d-flex @imgJustify @orderClass">
+                            <p class="img-wrap">
+                              @_Cisco_Helpers.RenderImageAsset(image, Url)
+                            </p>
+                          </div>
+                        }
+                      <div class="col-md-6 order-md-1">
+                        @if (!string.IsNullOrWhiteSpace(title))
+                        {
+                          <p class="h5" @_Helpers.RenderICEAttribute(titleEl)>@title</p>
+                        }
+
+                        @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+
+                        @if (ctas.Any())
+                        {
+                          @_Cisco_Helpers.RenderCardMultiCtaList(ctas, Url)
+                        }
+                      </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                cardImageOnLeft = !cardImageOnLeft;
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}

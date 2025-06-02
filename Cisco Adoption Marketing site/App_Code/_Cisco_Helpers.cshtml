@@ -1,0 +1,756 @@
+﻿@using System.Web.Mvc
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@helper HandleCustomTrayHeadAssets(ICMSElement[] customTrays)
+{
+    if (customTrays != null && customTrays.Any())
+    {
+        foreach (ICMSElement tray in customTrays)
+        {
+            ICMSElement headCssList = tray.Element(null, "HeadCSS");
+            ICMSElement[] headStyles = headCssList != null ? headCssList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+
+            ICMSElement headJsList = tray.Element(null, "HeadJS");
+            ICMSElement[] headScripts = headJsList != null ? headJsList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+
+            string headScript = tray.GetElementValue("HeadScript");
+
+            if (headStyles.Any())
+            {
+                foreach (ICMSAssetElement stylesheet in headStyles)
+                {
+                    <link rel="stylesheet" @HtmlAttribute("href", stylesheet.Value) />
+                }
+            }
+
+            if (headScripts.Any())
+            {
+                foreach (ICMSAssetElement script in headScripts)
+                {
+                    <script @HtmlAttribute("src", script.Value)></script>
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(headScript))
+            {
+                @(new HtmlString(headScript))
+            }
+        }
+    }
+}
+
+@helper HandleCustomTrayBodyAssets(ICMSElement[] customTrays)
+{
+    if (customTrays != null && customTrays.Any())
+    {
+        foreach (ICMSElement tray in customTrays)
+        {
+            ICMSElement footerJsList = tray.Element(null, "HeadJS");
+            ICMSElement[] footerScripts = footerJsList != null ? footerJsList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+
+            if (footerScripts.Any())
+            {
+                foreach (ICMSAssetElement script in footerScripts)
+                {
+                    <script async @HtmlAttribute("src", script.Value)></script>
+                }
+            }
+        }
+    }
+}
+
+@helper HtmlAttribute(string attributeName, params string[] attributeValue)
+{
+    if (attributeValue != null && attributeValue.Any())
+    {
+        string joinedAttributeValues = string.Join(" ", attributeValue);
+
+        if (!string.IsNullOrWhiteSpace(attributeName) && !string.IsNullOrWhiteSpace(joinedAttributeValues))
+        {
+            string attribute = string.Format("{0}=\"{1}\"", attributeName, joinedAttributeValues);
+            @(new HtmlString(attribute))
+        }
+    }
+}
+
+@helper PartialViewAddToBody(CMSPageRequest model)
+{
+    if (model != null)
+    {
+        ICMSElement[] customTrays = model.Elements("CustomTray").ToArray();
+
+        if (customTrays != null && customTrays.Any())
+        {
+            @HandleCustomTrayBodyAssets(customTrays)
+        }
+    }
+}
+
+@helper PartialViewAddToHead(CMSPageRequest model)
+{
+    if (model != null)
+    {
+        ICMSElement[] customTrays = model.Elements("CustomTray").ToArray();
+
+        if (customTrays != null && customTrays.Any())
+        {
+            @HandleCustomTrayHeadAssets(customTrays)
+        }
+
+        ICMSElement[] imageCarousels = model.Elements("PromowithImageCarousel").ToArray();
+        ICMSElement[] testimonialTrays = model.Elements("PromowithTestimonials").ToArray();
+        ICMSElement[] verticalTabTrays = model.Elements("PromowithTabsVertical").ToArray();
+        ICMSElement[] horizontalTabTrays = model.Elements("PromowithTabsHorizontal").ToArray();
+        ICMSElement[] tabTrays = verticalTabTrays.Concat(horizontalTabTrays).ToArray();
+        ICMSElement[] grouperTrays = model.Elements("SectionGrouperTray").ToArray();
+
+        ICMSElement[] swiperTrays = imageCarousels.Concat(testimonialTrays).Concat(tabTrays).Concat(grouperTrays).ToArray();
+
+        if (swiperTrays != null && swiperTrays.Any())
+        {
+            <link rel="stylesheet" href="https://unpkg.com/swiper/swiper-bundle.min.css" />
+            <script src="https://unpkg.com/swiper/swiper-bundle.min.js"></script>
+        }
+    }
+}
+
+@helper RenderCardMultiCtaList(IEnumerable<ICMSLinkElement> links, UrlHelper url)
+{
+    if (links != null)
+    {
+        links = links.ToArray();
+        <ul class="list-no-bull links-cta font-size-sm">
+            @foreach (ICMSLinkElement link in links)
+            {
+                <li>
+                    @_Helpers.RenderCMSLink(link, url)
+                </li>
+            }
+        </ul>
+    }
+}
+
+@helper RenderCMSLinkWithIcon(ICMSLinkElement link, UrlHelper urlHelper, string iconClass, string linkTextOverride = "", string cssClasses = "", bool showLinkText = true, bool allowNull = false)
+{
+    if (link != null)
+    {
+        if (link.Schema == null || (link.Schema != "Folder" && link.Schema.IndexOf("Component") == -1) || !string.IsNullOrWhiteSpace(link.GetAttributeValue("CustomURL")))
+        {
+            string linkUrl = _Functions.GetLinkAction(link, urlHelper);
+            string linkText = !string.IsNullOrWhiteSpace(link.LinkName) ? link.LinkName : link.Name;
+            linkText = !string.IsNullOrWhiteSpace(linkTextOverride) ? linkTextOverride : linkText;
+
+            if (!showLinkText)
+            {
+                linkText = string.Empty;
+            }
+
+            string target = !string.IsNullOrWhiteSpace(link.GetAttributeValue("Target")) ? link.GetAttributeValue("Target") : link.GetAttributeValue("CustomTarget");
+            string title = link.GetAttributeValue("Title");
+
+            @RenderLinkWithIcon(linkUrl, linkText, iconClass, target, cssClasses, title)
+        }
+    }
+}
+
+@helper RenderComponentImage(ICMSElement compImage, UrlHelper urlHelper, string cssClasses = "", string imageId = "", bool showCaption = false)
+{
+    if (compImage != null && compImage.RootElementName == "ComponentImage")
+    {
+        ICMSElement imageAsset = compImage.Element("ImageAsset", "Image");
+        string title = compImage.GetElementValue("Title");
+        string introText = compImage.GetElementValue("IntroText");
+        ICMSLinkElement cta = compImage.GetLinkItem("CalltoAction");
+        string href = _Functions.GetLinkAction(cta, urlHelper);
+        var target = _Functions.GetLinkTarget(cta).ToString();
+        string linkTitle = cta != null ? cta.GetAttributeValue("Title") : string.Empty;
+        string linkText = _Functions.GetLinkName(cta);
+
+        // swiper helper > promowithimagecarousel.cshtml
+        <span class="js--swiperhelper"
+              data-title="@title"
+              data-intro="@introText"
+              data-href="@href"
+              data-target="@target"
+              data-linkText="@linkText"
+              data-linkTitle="@linkTitle">
+        </span>
+        @RenderImageAsset(imageAsset, urlHelper, cssClasses, imageId, showCaption)
+    }
+}
+
+@helper RenderCountrySelect(bool isHeader, bool isMobile = false)
+{
+    // TODO: austin - swap to form w/ select?
+    if (isMobile)
+    {
+        <div class="content">
+            <div class="spacer-40"></div>
+            <div class="card-wrap">
+                <div class="card-inner border">
+                    <p class="h4 margin-40">Select Country/Region</p>
+                    <ul class="country-list">
+                        <li data-id="AU">
+                            <a href="#">Australia (English)</a>
+                        </li>
+                        <li data-id="BR">
+                            <a href="#">Brazil (Português)</a>
+                        </li>
+                        <li data-id="CA">
+                            <a href="#">Canada (English)</a>
+                        </li>
+                        <li data-id="CAF">
+                            <a href="#">Canada (Français)</a>
+                        </li>
+                        <li data-id="CN">
+                            <a href="#">China (简体字)</a>
+                        </li>
+                        <li data-id="FR">
+                            <a href="#">France (Français)</a>
+                        </li>
+                        <li data-id="DE">
+                            <a href="#">Germany (Deutsch)</a>
+                        </li>
+                        <li data-id="HK">
+                            <a href="#">Hong Kong (繁體中文)</a>
+                        </li>
+                        <li data-id="IN">
+                            <a href="#">India (English)</a>
+                        </li>
+                        <li data-id="IT">
+                            <a href="#">Italy (Italiano)</a>
+                        </li>
+                        <li data-id="JP">
+                            <a href="#">Japan (日本語)</a>
+                        </li>
+                        <li data-id="KR">
+                            <a href="#">South Korea (한국어)</a>
+                        </li>
+                        <li data-id="MX">
+                            <a href="#">Latin America (Español)</a>
+                        </li>
+                        <li data-id="ES">
+                            <a href="#">Spain (Español)</a>
+                        </li>
+                        <li data-id="GB">
+                            <a href="#">United Kingdom (English)</a>
+                        </li>
+                        <li data-id="US">
+                            <a href="#">United States (English)</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+    else if (isHeader)
+    {
+        <div id="country-header" class="country-content">
+            <div class="spacer-16"></div>
+            <div class="card-wrap">
+                <div class="card-inner border white">
+                    <p class="h4 margin-24">Select Country/Region</p>
+                    <ul class="country-list">
+                        <li data-id="AU">
+                            <a href="#">Australia (English)</a>
+                        </li>
+                        <li data-id="BR">
+                            <a href="#">Brazil (Português)</a>
+                        </li>
+                        <li data-id="CA">
+                            <a href="#">Canada (English)</a>
+                        </li>
+                        <li data-id="CAF">
+                            <a href="#">Canada (Français)</a>
+                        </li>
+                        <li data-id="CN">
+                            <a href="#">China (简体字)</a>
+                        </li>
+                        <li data-id="FR">
+                            <a href="#">France (Français)</a>
+                        </li>
+                        <li data-id="DE">
+                            <a href="#">Germany (Deutsch)</a>
+                        </li>
+                        <li data-id="HK">
+                            <a href="#">Hong Kong (繁體中文)</a>
+                        </li>
+                        <li data-id="IN">
+                            <a href="#">India (English)</a>
+                        </li>
+                        <li data-id="IT">
+                            <a href="#">Italy (Italiano)</a>
+                        </li>
+                        <li data-id="JP">
+                            <a href="#">Japan (日本語)</a>
+                        </li>
+                        <li data-id="KR">
+                            <a href="#">South Korea (한국어)</a>
+                        </li>
+                        <li data-id="MX">
+                            <a href="#">Latin America (Español)</a>
+                        </li>
+                        <li data-id="ES">
+                            <a href="#">Spain (Español)</a>
+                        </li>
+                        <li data-id="GB">
+                            <a href="#">United Kingdom (English)</a>
+                        </li>
+                        <li data-id="US">
+                            <a href="#">United States (English)</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div id="country-footer" class="country-content">
+            <div class="card-wrap">
+                <div class="card-inner border white">
+                    <a class="close-country" href="#" title="Close">
+                        <span class="icon-close"></span>
+                    </a>
+                    <p class="h6">Select Country/Region</p>
+                    <ul class="country-list">
+                        <li data-id="AU">
+                            <a href="#">Australia (English)</a>
+                        </li>
+                        <li data-id="BR">
+                            <a href="#">Brazil (Português)</a>
+                        </li>
+                        <li data-id="CA">
+                            <a href="#">Canada (English)</a>
+                        </li>
+                        <li data-id="CAF">
+                            <a href="#">Canada (Français)</a>
+                        </li>
+                        <li data-id="CN">
+                            <a href="#">China (简体字)</a>
+                        </li>
+                        <li data-id="FR">
+                            <a href="#">France (Français)</a>
+                        </li>
+                        <li data-id="DE">
+                            <a href="#">Germany (Deutsch)</a>
+                        </li>
+                        <li data-id="HK">
+                            <a href="#">Hong Kong (繁體中文)</a>
+                        </li>
+                        <li data-id="IN">
+                            <a href="#">India (English)</a>
+                        </li>
+                        <li data-id="IT">
+                            <a href="#">Italy (Italiano)</a>
+                        </li>
+                        <li data-id="JP">
+                            <a href="#">Japan (日本語)</a>
+                        </li>
+                        <li data-id="KR">
+                            <a href="#">South Korea (한국어)</a>
+                        </li>
+                        <li data-id="MX">
+                            <a href="#">Latin America (Español)</a>
+                        </li>
+                        <li data-id="ES">
+                            <a href="#">Spain (Español)</a>
+                        </li>
+                        <li data-id="GB">
+                            <a href="#">United Kingdom (English)</a>
+                        </li>
+                        <li data-id="US">
+                            <a href="#">United States (English)</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@helper RenderCustomHeadAssets(CMSPageRequest model, ICMSElement siteControl)
+{
+    if (model != null && siteControl != null)
+    {
+        // global customizations
+        ICMSElement headCssList = siteControl.Element(null, "HeadCSS");
+        ICMSElement[] headStyles = headCssList != null ? headCssList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+        if (headStyles.Any())
+        {
+            foreach (ICMSElement stylesheet in headStyles)
+            {
+                <link rel="stylesheet" @HtmlAttribute("href", stylesheet.Value) />
+            }
+        }
+
+        ICMSElement headJsList = siteControl.Element(null, "HeadJS");
+        ICMSElement[] headScripts = headJsList != null ? headJsList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+        if (headScripts.Any())
+        {
+            foreach (ICMSElement script in headScripts)
+            {
+                <script @HtmlAttribute("src", script.Value)></script>
+            }
+        }
+
+        string externals = siteControl.GetElementValue("ExternalIncludes");
+        if (!string.IsNullOrWhiteSpace(externals))
+        {
+            @(new HtmlString(externals))
+        }
+
+        // page level customizations
+        string pgHeadCss = model.GetElementValue("HeadCSS");
+        if (!string.IsNullOrWhiteSpace(pgHeadCss))
+        {
+            <link rel="stylesheet" @HtmlAttribute("href", pgHeadCss) />
+        }
+
+        string pgHeadJs = model.GetElementValue("HeadJS");
+        if (!string.IsNullOrWhiteSpace(pgHeadJs))
+        {
+            <script @HtmlAttribute("src", pgHeadJs)></script>
+        }
+
+        string pgExternals = model.GetElementValue("ExternalIncludes");
+        if (!string.IsNullOrWhiteSpace(pgExternals))
+        {
+            @(new HtmlString(pgExternals))
+        }
+    }
+}
+
+@helper RenderCustomFooterAssets(CMSPageRequest model, ICMSElement siteControl)
+{
+    if (model != null && siteControl != null)
+    {
+        // global customizations
+        ICMSElement footerJsList = siteControl.Element(null, "FooterJS");
+        ICMSElement[] footerScripts = footerJsList != null ? footerJsList.Elements("Asset").ToArray() : Array.Empty<ICMSElement>();
+
+        if (footerScripts != null && footerScripts.Any())
+        {
+            foreach (ICMSAssetElement script in footerScripts)
+            {
+                <script async @HtmlAttribute("src", script.Value)></script>
+            }
+        }
+
+        // page level customizations
+        string pgFooterJs = model.GetElementValue("FooterJS");
+        if (!string.IsNullOrWhiteSpace(pgFooterJs))
+        {
+            <script async @HtmlAttribute("src", pgFooterJs)></script>
+        }
+    }
+}
+
+@helper RenderImage(ICMSElement imageElt, UrlHelper urlHelper, string cssClasses = "", string imageId = "", bool loadImageFast = false)
+{
+    if (imageElt != null && !string.IsNullOrWhiteSpace(imageElt.Value))
+    {
+        string altText = imageElt.GetAttributeValue("AlternateText");
+        string src = urlHelper.Asset(imageElt.Value, imageElt);
+
+        if (loadImageFast) 
+        {
+          <img loading="eager"
+               @_Helpers.RenderICEAttribute(imageElt)
+               @HtmlAttribute("src", src)
+               @HtmlAttribute("alt", altText)
+               @HtmlAttribute("class", cssClasses)
+               @HtmlAttribute("id", imageId) />
+        } 
+
+        else if (!loadImageFast)
+        {
+          <img loading="lazy"
+               @_Helpers.RenderICEAttribute(imageElt)
+               @HtmlAttribute("src", src)
+               @HtmlAttribute("alt", altText)
+               @HtmlAttribute("class", cssClasses)
+               @HtmlAttribute("id", imageId) />
+        }        
+    }
+}
+
+@helper RenderImageAsset(ICMSElement imageAssetComp, UrlHelper urlHelper, string cssClasses = "", string imageId = "", bool showCaption = false, bool loadImageFast = false)
+{
+    if (imageAssetComp != null && imageAssetComp.RootElementName == "ImageAsset")
+    {
+        ICMSElement cmsImage = imageAssetComp.Element("ImageCMS");
+        string brandFolderCDN = imageAssetComp.GetElementValue("ImageBrandfolderCDN");
+        string caption = imageAssetComp.GetElementValue("Caption");
+
+        Dictionary<string, string> customStyles = ComponentVariationWrapper.GetCustomStyles(imageAssetComp);
+        string imageStyle = customStyles.Get("ImageStyle");
+        string iconGradient = customStyles.Get("IconGradientColor");
+        bool hasIconGradient = !string.IsNullOrWhiteSpace(iconGradient);
+
+        bool isIcon = imageAssetComp.GetElementValue("ImageisIcon").ToLower() == "true";
+        string iconImageClass = isIcon ? "img-icon-45" : string.Empty;
+
+        bool isCmsAsset = cmsImage != null && !string.IsNullOrWhiteSpace(cmsImage.Value);
+        bool isBrandFolderAsset = !string.IsNullOrWhiteSpace(brandFolderCDN);
+
+        int hash = imageAssetComp.GetHashCode();
+        string fullUrl = _Cisco_Functions.GetImageAssetFullPath(imageAssetComp);
+        var htmlUrl = new HtmlString(fullUrl);
+
+        if (isIcon && hasIconGradient)
+        {
+            _Cisco_Functions.ImageAssetDimensions dimensions = _Cisco_Functions.GetImageAssetDimensions(imageAssetComp, isCmsAsset);
+
+            string height = string.Format("{0}px", dimensions.Height);
+            string width = dimensions.Width == "auto" ? dimensions.Width : string.Format("{0}px", dimensions.Width);
+
+            <style>
+                [data-icon="@hash"] {
+                    height: @height;
+                    width: @width;
+                    max-width: 100%;
+                    background: @iconGradient;
+                    -webkit-mask: url("@htmlUrl") no-repeat center;
+                    mask: url("@htmlUrl") no-repeat center;
+                }
+            </style>
+
+            <div data-icon="@hash"></div>
+        }
+        else if (isCmsAsset)
+        {
+            @RenderImage(cmsImage, urlHelper, string.Format("{0} {1} {2}", cssClasses, imageStyle, iconImageClass), imageId, loadImageFast)
+
+            if (showCaption)
+            {
+                <span class="caption">@caption</span>
+            }
+        }
+        else if (isBrandFolderAsset)
+        {
+            string altText = caption;
+            bool forceCrop = imageAssetComp.GetElementValue("Force11Ratio").ToLower() == "true";
+
+            if (forceCrop)
+            {
+                brandFolderCDN = _Cisco_Functions.ForceCropBrandfolderImage(brandFolderCDN);
+            }
+
+            <img loading="lazy"
+                 @HtmlAttribute("src", brandFolderCDN)
+                 @HtmlAttribute("alt", altText)
+                 @HtmlAttribute("id", imageId)
+                 @HtmlAttribute("class", cssClasses, imageStyle, iconImageClass) />
+
+            if (showCaption)
+            {
+                <span class="caption">@caption</span>
+            }
+        }
+        else if (HttpContext.Current.IsDebuggingEnabled)
+        {
+            <!-- error: imageasset helper -->
+        }
+    }
+}
+
+@helper RenderLinkedComponentImage(ICMSElement compImage, UrlHelper urlHelper, string cssClasses = "", string imageId = "", bool showCaption = false)
+{
+    if (compImage != null)
+    {
+        ICMSElement imageAsset = compImage.Element("ImageAsset", "Image");
+        ICMSLinkElement cta = compImage.GetLinkItem("CalltoAction");
+        string linkUrl = _Functions.GetLinkAction(cta, urlHelper);
+        var target = string.Empty;
+        var linkTitle = string.Empty;
+
+        if (cta != null)
+        {
+            target = !string.IsNullOrWhiteSpace(cta.GetAttributeValue("Target")) ? cta.GetAttributeValue("Target") : cta.GetAttributeValue("CustomTarget");
+            linkTitle = cta.GetAttributeValue("Title");
+
+            <a @HtmlAttribute("href", linkUrl)
+               @HtmlAttribute("title", linkTitle)
+               @HtmlAttribute("target", target)>
+
+                @RenderComponentImage(compImage, urlHelper, cssClasses, imageId, showCaption)
+            </a>
+        }
+        else
+        {
+            <!-- RenderLinkedComponentImage: CTA is null -->
+            @RenderComponentImage(compImage, urlHelper, cssClasses, imageId, showCaption)
+        }
+    }
+}
+
+@helper RenderLinkedImageAsset(ICMSElement imageAssetComp, ICMSLinkElement link, UrlHelper urlHelper, string cssClasses = "", string imageId = "", bool showCaption = false)
+{
+    if (imageAssetComp != null && link != null)
+    {
+        string linkUrl = _Functions.GetLinkAction(link, urlHelper);
+        string target = !string.IsNullOrWhiteSpace(link.GetAttributeValue("Target")) ? link.GetAttributeValue("Target") : link.GetAttributeValue("CustomTarget");
+        string title = link.GetAttributeValue("Title");
+
+        <a @HtmlAttribute("href", linkUrl)
+           @HtmlAttribute("title", title)
+           @HtmlAttribute("target", target)>
+
+            @RenderImageAsset(imageAssetComp, urlHelper, cssClasses, imageId, showCaption)
+        </a>
+    }
+    else if (imageAssetComp != null)
+    {
+        <!-- RenderLinkedImageAsset: CTA is null -->
+        @RenderImageAsset(imageAssetComp, urlHelper, cssClasses, imageId, showCaption)
+    }
+}
+
+@helper RenderLinkWithIcon(string url, string linkText, string iconClass, string target = "", string cssClasses = "", string title = "")
+{
+    <a @HtmlAttribute("href", url)
+       @HtmlAttribute("target", target)
+       @HtmlAttribute("class", cssClasses)
+       @HtmlAttribute("title", title)>
+
+        @(new HtmlString(linkText))
+
+        <span @HtmlAttribute("class", iconClass)></span>
+    </a>
+}
+
+@helper RenderMetaData(CMSPageRequest model, ICMSElement siteControl)
+{
+    @* constants *@
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    if (model != null)
+    {
+        @* global seo *@
+        ICMSElement ogImageEl = null;
+        ICMSElement twitterImageEl = null;
+        string ogType, ogURL, ogTitle, ogDescription, ogSiteName, twitterCard, twitterUrl, twitterTitle, twitterDescription, ogImage, twitterImage;
+        ogType = ogURL = ogTitle = ogDescription = ogSiteName = twitterCard = twitterUrl = twitterTitle = twitterDescription = ogImage = twitterImage = string.Empty;
+
+        if (siteControl != null)
+        {
+            ogImageEl = siteControl.Element("ImageAsset", "OGImage");
+            twitterImageEl = siteControl.Element("ImageAsset", "TwitterImage");
+
+            ogImage = _Cisco_Functions.GetImageAssetFullPath(ogImageEl);
+            twitterImage = _Cisco_Functions.GetImageAssetFullPath(twitterImageEl);
+
+            ogType = siteControl.GetElementValue("OGType");
+            ogURL = siteControl.GetElementValue("OGURL");
+            ogTitle = siteControl.GetElementValue("OGTitle");
+            ogDescription = siteControl.GetElementValue("OGDescription");
+            ogSiteName = siteControl.GetElementValue("OGSiteName");
+
+            twitterCard = siteControl.GetElementValue("TwitterCard");
+            twitterUrl = siteControl.GetElementValue("TwitterUrl");
+            twitterTitle = siteControl.GetElementValue("TwitterTitle");
+            twitterDescription = siteControl.GetElementValue("TwitterDescription");
+        }
+
+        @* page seo *@
+        ICMSElement pgOgImageEl = model.Element("ImageAsset", "OGImage");
+        ICMSElement pgTwitterImageEl = model.Element("ImageAsset", "TwitterImage");
+
+        string pgOgImage = _Cisco_Functions.GetImageAssetFullPath(pgOgImageEl);
+        string pgTwitterImage = _Cisco_Functions.GetImageAssetFullPath(pgTwitterImageEl);
+
+        string pgMetaDescription = model.GetElementValue("MetadataDescription");
+        string pgMetaKeywords = model.GetElementValue("MetadataKeywords");
+        string pgCustomMeta = model.GetElementValue("CustomMetadata");
+        string author = model.GetElementValue("Author");
+        string publisher = model.GetElementValue("Publisher");
+        string noindex = model.GetElementValue("NoIndex");
+
+        string pgOgType = model.GetElementValue("OGType");
+        string pgOgUrl = model.GetElementValue("OGURL");
+        string pgOgTitle = model.GetElementValue("OGTitle");
+        string pgOgDescription = model.GetElementValue("OGDescription");
+        string pgOgSiteName = model.GetElementValue("OGSiteName");
+
+        string pgTwitterCard = model.GetElementValue("TwitterCard");
+        string pgTwitterUrl = model.GetElementValue("TwitterUrl");
+        string pgTwitterTitle = model.GetElementValue("TwitterTitle");
+        string pgTwitterDescription = model.GetElementValue("TwitterDescription");
+
+        @RenderMetaTag("description", pgCustomMeta)
+        @RenderMetaTag("description", pgMetaDescription)
+        @RenderMetaTag("keywords", pgMetaKeywords)
+        @RenderMetaTag("author", author)
+        @RenderMetaTag("publisher", publisher)
+        @RenderMetaTag("robots", noindex)
+
+        @RenderMetaTag("OGType", pgOgType, ogType)
+        @RenderMetaTag("OGURL", pgOgUrl, ogURL)
+        @RenderMetaTag("OGTitle", pgOgTitle, ogTitle)
+        @RenderMetaTag("OGDescription", pgOgDescription, ogDescription)
+        @RenderMetaTag("OGSiteName", pgOgSiteName, ogSiteName)
+        @RenderMetaTag("OGImage", pgOgImage, ogImage)
+
+        @RenderMetaTag("TwitterCard", pgTwitterCard, twitterCard)
+        @RenderMetaTag("TwitterUrl", pgTwitterUrl, twitterUrl)
+        @RenderMetaTag("TwitterTitle", pgTwitterTitle, twitterTitle)
+        @RenderMetaTag("TwitterDescription", pgTwitterDescription, twitterTitle)
+        @RenderMetaTag("TwitterImage", pgTwitterImage, twitterImage)
+    }
+}
+
+@helper RenderMetaTag(string tagName, string pageValue, string globalValue = "")
+{
+    if (!string.IsNullOrWhiteSpace(tagName))
+    {
+        tagName = tagName.ToLowerInvariant();
+        if (tagName.StartsWith("og"))
+        {
+            tagName = tagName.SubstringAfter("og");
+            string content = !string.IsNullOrWhiteSpace(pageValue) ? pageValue : globalValue;
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                <meta property="og:@tagName" content="@content" />
+            }
+        }
+        else if (tagName.StartsWith("twitter"))
+        {
+            tagName = tagName.SubstringAfter("twitter");
+            string content = !string.IsNullOrWhiteSpace(pageValue) ? pageValue : globalValue;
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                <meta name="twitter:@tagName" content="@content" />
+            }
+        }
+        else
+        {
+            string content = !string.IsNullOrWhiteSpace(pageValue) ? pageValue : globalValue;
+
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                <meta name="@tagName" content="@content" />
+            }
+        }
+    }
+}
+
+@helper RenderSideNavLink(ICMSElement comp, int count, UrlHelper url)
+{
+    if (comp != null)
+    {
+        ICMSElement image = comp.Element("ImageAsset");
+        string heading = comp.GetElementValue("TrayHeading");
+        heading = !string.IsNullOrWhiteSpace(heading) ? heading : comp.RootElementName;
+
+        <li>
+            <a class="nav-link" href="#section-@count">
+                @heading
+            </a>
+        </li>
+    }
+}

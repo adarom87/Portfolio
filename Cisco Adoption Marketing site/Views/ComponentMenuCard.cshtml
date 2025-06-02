@@ -1,0 +1,90 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        var menuCartData = new ComponentMenuCardData(Model);
+
+        bool isMobile = ViewData["IsMobile"] + string.Empty == "true";
+
+        if (isMobile)
+        {
+            @MobileMenuCard(menuCartData)
+        }
+        else
+        {
+            @DesktopMenuCard(menuCartData)
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}
+
+@helper DesktopMenuCard(ComponentMenuCardData data)
+{
+    if (data != null)
+    {
+        bool hasCopy = _Cisco_Functions.HasCopy(data.model);
+
+        <div class="col-md-3" @_Helpers.RenderICEAttribute(data.model, true)>
+            <div class="card-wrap">
+                <div class="card-inner border clickable">
+                    @if (data.image != null)
+                    {
+                        <p class="thumb-wrap">
+                            @_Cisco_Helpers.RenderImageAsset(data.image, Url)
+                        </p>
+                    }
+
+                    @if (data.cta != null)
+                    {
+                        <p class="h6">@_Helpers.RenderCMSLink(data.cta, Url)</p>
+                    }
+
+                    @if (hasCopy)
+                    {
+                        <div class="opacity-70" @_Helpers.RenderICEAttribute(data.leadinTextElement, true)>
+                            @data.leadinText
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@helper MobileMenuCard(ComponentMenuCardData data)
+{
+    if (data != null)
+    {
+        <div class="clickable">
+            <div class="row align-items-center">
+
+                @if (data.image != null)
+                {
+                    <div class="col-auto">
+                        <p class="thumb-wrap">
+                            @_Cisco_Helpers.RenderImageAsset(data.image, Url, "round")
+                        </p>
+                    </div>
+                }
+
+                @if (data.cta != null)
+                {
+                    <div class="col">
+                        <p class="h5">
+                            @_Helpers.RenderCMSLink(data.cta, Url, cssClasses: "link-cta")
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}

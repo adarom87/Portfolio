@@ -1,0 +1,151 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    bool isHeader = ViewData["IsHeader"] + string.Empty == "true";
+    bool isFooter = ViewData["IsFooter"] + string.Empty == "true";
+    bool isMobile = ViewData["IsMobile"] + string.Empty == "true";
+
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        var menuListData = new ComponentMenuListData(Model);
+
+        if (isHeader)
+        {
+            @HeaderMenuList(menuListData)
+        }
+        else if (isFooter)
+        {
+            @FooterMenuList(menuListData)
+        }
+        else if (isMobile)
+        {
+            @MobileMenuList(menuListData)
+        }
+        else
+        {
+            throw new Exception("ViewData value not passed.");
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}
+
+@helper HeaderMenuList(ComponentMenuListData data)
+{
+    if (data != null)
+    {
+        <div class="col-md-3" @_Helpers.RenderICEAttribute(data.model, true)>
+
+            @if (!string.IsNullOrWhiteSpace(data.heading))
+            {
+                <p @_Helpers.RenderICEAttribute(data.headingElement) class="text-heading">@data.heading</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(data.subHeading))
+            {
+                <p @_Helpers.RenderICEAttribute(data.subHeadingElement) class="h6">@data.subHeading</p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(data.leadinText))
+            {
+                <div class="opacity-70 font-size-sm">
+                    <p @_Helpers.RenderICEAttribute(data.leadinTextElement)>@data.leadinText</p>
+                </div>
+            }
+
+            @if (data.primaryCalltoAction != null)
+            {
+                <p>
+                    @_Helpers.RenderCMSLink(data.primaryCalltoAction, Url, cssClasses: "link-cta eucalyptus-text")
+                </p>
+            }
+
+            @if (data.secondaryCallstoAction != null && data.secondaryCallstoAction.Any())
+            {
+                <ul class="list-no-bull">
+                    @foreach (ICMSLinkElement link in data.secondaryCallstoAction)
+                    {
+                        <li>@_Helpers.RenderCMSLink(link, Url)</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+}
+
+@helper FooterMenuList(ComponentMenuListData data)
+{
+    if (data != null)
+    {
+        <div class="col-md" @_Helpers.RenderICEAttribute(data.model, true)>
+            <div class="links">
+                @if (data.primaryCalltoAction != null)
+                {
+                    <div class="heading">
+                        <a href="javascript:;">
+                            @data.heading
+                            <span class="icon-open" aria-label="open menu"></span>
+                        </a>
+                    </div>
+                }
+
+                @if (data.secondaryCallstoAction != null && data.secondaryCallstoAction.Any())
+                {
+                    <ul>
+                        @foreach (ICMSLinkElement secondaryCta in data.secondaryCallstoAction)
+                        {
+                            <li>
+                                @_Helpers.RenderCMSLink(secondaryCta, Url)
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+}
+
+@helper MobileMenuList(ComponentMenuListData data)
+{
+    if (data != null)
+    {
+        // add outer div for ice
+        <div @_Helpers.RenderICEAttribute(data.model)>
+            @if (!string.IsNullOrWhiteSpace(data.heading))
+            {
+                <p class="text-heading" @_Helpers.RenderICEAttribute(data.headingElement)>@data.heading</p>
+            }
+
+            @if (data.primaryCalltoAction != null)
+            {
+                <p class="h5">
+                    @_Helpers.RenderCMSLink(data.primaryCalltoAction, Url, data.subHeading, cssClasses: "link-cta")
+                </p>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(data.leadinText))
+            {
+                <div class="opacity-70">
+                    <p @_Helpers.RenderICEAttribute(data.leadinTextElement)>@data.leadinText</p>
+                </div>
+            }
+
+            @if (data.secondaryCallstoAction != null && data.secondaryCallstoAction.Any())
+            {
+                <ul class="list-no-bull links-cta">
+                    @foreach (ICMSLinkElement link in data.secondaryCallstoAction)
+                    {
+                        <li>@_Helpers.RenderCMSLink(link, Url)</li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+}

@@ -1,0 +1,7 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+
+@if (Model != null && !String.IsNullOrWhiteSpace(Model.Value))
+{
+    <div @_Helpers.RenderICEAttribute(Model)>@(new HtmlString(Model.Value))</div>
+}

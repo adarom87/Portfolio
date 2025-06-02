@@ -1,0 +1,126 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        string trayHtmlId = Model.GetElementValue("TrayID");
+        ICMSElement[] cards = Model.Elements("ComponentCard", "Card").ToArray();
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string trayBgColor = styles.Get("TrayBGColor");
+        string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+        string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+
+        <section @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId) class="tray tray-simple @trayBgColor" @_Helpers.RenderICEAttribute(Model, true)>
+            <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation opacity-70"></div>
+            <div class="container">
+                <div class="row">
+
+                    @if (cards.Any())
+                    {
+                        if (_Cisco_Functions.IsDebug() && cards.Count() > 2)
+                        {
+                            <!-- Rendered 2 (max) of @cards.Count() -->
+                        }
+
+                        @* force maximum 2 cards *@
+                        foreach (ICMSElement card in cards.Take(2))
+                        {
+                            // ice
+                            ICMSElement titleEl = card.Element("CardTitle");
+                            ICMSElement introTextEl = card.Element("IntroText");
+
+                            ICMSElement image = card.Element("ImageAsset", "Image");
+                            string title = card.GetElementValue("CardTitle");
+                            ICMSLinkElement cta = card.GetLinkItem("CalltoAction");
+
+                            // styles
+                            Dictionary<String, String> cardStyles = ComponentVariationWrapper.GetCustomStyles(card);
+
+                            string cardBgColor = cardStyles.Get("CardBGColor");
+                            string textColor = cardStyles.Get("TextColor");
+                            /* string linkIcon = cardStyles.Get("LinkIcon"); */
+
+                            Dictionary<String, String> buttonStyles;
+
+                            ICMSElement[] buttonStylingObjects = card.Elements("ButtonStyling").ToArray();
+
+                            int buttonNumber = 0;
+
+                            string buttonBgColor = "";
+                            string buttonTextColor = "";
+                            string buttonBorderColor = "";
+                            string buttonBgColorHover = "";
+                            string buttonTextColorHover = "";
+                            string buttonBorderColorHover = "";
+
+                            bool showCtaText = false;
+                            string linkIcon = "";
+
+                            string iconClass = "";
+                            bool singleCtaButton = false;
+
+                            <div class="col-lg-6">
+                                <div class="card-wrap">
+                                    <div class="card-inner @cardBgColor @textColor">
+                                        <div class="content">
+                                            @if (image != null)
+                                            {
+                                                <p class="h4 img-wrap">
+                                                    @_Cisco_Helpers.RenderImageAsset(image, Url)
+                                                </p>
+                                            }
+
+                                            @if (!string.IsNullOrWhiteSpace(title))
+                                            {
+                                                <p class="h4" @_Helpers.RenderICEAttribute(titleEl)>@title</p>
+                                            }
+
+                                            @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+
+                                            @if (cta != null)
+                                            {
+                                                buttonStyles = ComponentVariationWrapper.GetCustomStyles(card.Element("ButtonStyling"));
+
+                                                buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                                                buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                                                buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                                                buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                                                buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                                                buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                                                showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                                                linkIcon = buttonStyles.Get("LinkIcon");
+
+                                                iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+                                                singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+                                                <div class="spacer-32"></div>
+                                                /* <p class="margin-16">
+                                                    @_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, string.Format("icon {0}", linkIcon), cssClasses: "button button-gray-d2 button-hover-white")
+                                                </p> */
+
+                                        <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

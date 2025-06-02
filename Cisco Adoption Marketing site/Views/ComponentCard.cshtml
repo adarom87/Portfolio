@@ -1,0 +1,374 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // styles
+    Dictionary<String, String> cardStyles =
+        ViewData["CardStyles"] != null ? ViewData["CardStyles"] as Dictionary<String, String> : new Dictionary<String, String>();
+
+    bool isPlainCard = cardStyles.Get("CardStyle").ToLower() != "border";
+    bool displaySingularCtaAsButton = cardStyles.Get("DisplaySingularCTAasButton").ToLower() == "true";
+
+    var cardData = new ComponentCardData(Model);
+
+    if (isPlainCard)
+    {
+      if (displaySingularCtaAsButton)
+      {
+        @PlainCardSingleCta(cardData, cardStyles)
+      }
+      else
+      {
+        @PlainCardMultiCta(cardData, cardStyles)
+      }
+    }
+    else
+    {
+      @BorderedCard(cardData, cardStyles)
+    }
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}
+
+@helper PlainCardMultiCta(ComponentCardData data, Dictionary<String, String> cardStyles)
+{
+  // from comp card
+  Dictionary<String, String> styles = data.customStyles;
+  string cardBgColor = styles.Get("CardBGColor");
+  string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+  string gradientOpacity = styles.Get("TrayBGImageOpacityPercentage");
+  string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+  string textColor = styles.Get("TextColor");
+  string cardTitleAlignment = styles.Get("CardTitleAlignment");
+  string introTextAlignment = styles.Get("IntroTextAlignment");
+  string cardCtaAlignment = styles.Get("CardCtaAlignment");
+  string singleCtaClass = textColor.Contains("white") ? "white" : "green";
+  string linkIcon = styles.Get("LinkIcon");
+
+  // from promowithcards
+  string borderColor = cardStyles.Get("CardBorderColor");
+  string cardStyle = cardStyles.Get("CardStyle");
+  string columnClass = cardStyles.Get("ColumnClass");
+  bool displayImages = cardStyles.Get("DisplayImages").ToLower() == "true";
+  bool showLinkText = cardStyles.Get("ShowLinkText").ToLower() == "true";
+
+  string cssClasses = string.Format("button button-{0}", singleCtaClass);
+  string iconClass = showLinkText ? string.Format("icon {0}", linkIcon) : linkIcon;
+
+  ICMSElement bgImage = Model.Element("ImageAsset", "TrayBackgroundImage");
+  string trayBgImagePosition = styles.Get("TrayBGImagePosition");
+  string trayBgImageOpacityPercentage = styles.Get("TrayBGImageOpacityPercentage");
+
+  <div @_Cisco_Helpers.HtmlAttribute("class", columnClass) @_Helpers.RenderICEAttribute(Model, true)>
+    <div class="card-wrap">
+      <div class="content @($"{cardBgColor} {textColor}")">
+
+        @if (trayBgGradientColor.ToLower() != "none" || !trayBgGradientColor.IsNullOrEmpty())
+        {
+          <div class="bg-radial @($"{trayBgGradientColor} {trayBgGradientOrientation} {gradientOpacity}")"></div>
+        }
+
+        @if (bgImage != null)
+        {
+          <div class="bg-img @trayBgImageOpacityPercentage">
+            @_Cisco_Helpers.RenderImageAsset(bgImage, Url, trayBgImagePosition, "", false, true)
+          </div>
+        }
+
+        @if (displayImages && data.image != null)
+        {
+          <p class="img-wrap">
+            @_Cisco_Helpers.RenderImageAsset(data.image, Url, "", "", false, true)
+          </p>
+        }
+        @if (!string.IsNullOrWhiteSpace(data.title))
+        {
+          <p class="h5 @cardTitleAlignment" @_Helpers.RenderICEAttribute(data.titleElement)>@data.title</p>
+        }
+
+        <div class="@introTextAlignment">
+          @{ Html.RenderPartial("Editable/RawHtml", data.introTextElement); }
+        </div>
+
+        @if (data.callstoAction != null && data.callstoAction.Any())
+        {
+          <div class="@cardCtaAlignment">
+            <ul class="list-no-bull links-cta font-size-sm">
+              @foreach (ICMSLinkElement link in data.callstoAction)
+              {
+                <li>
+                  @_Helpers.RenderCMSLink(link, Url)
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </div>
+
+      @if (cardStyle == "bottom-only")
+      {
+        <hr class="margin-0 @($"{borderColor} {cardStyle}")" />
+      }
+
+    </div>
+  </div>
+}
+
+@helper PlainCardSingleCta(ComponentCardData data, Dictionary<String, String> cardStyles)
+{
+  Dictionary<String, String> styles = data.customStyles;
+  string cardBgColor = styles.Get("CardBGColor");
+  string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+  string gradientOpacity = styles.Get("TrayBGImageOpacityPercentage");
+  string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+  string textColor = styles.Get("TextColor");
+  string cardTitleAlignment = styles.Get("CardTitleAlignment");
+  string introTextAlignment = styles.Get("IntroTextAlignment");
+  string cardCtaAlignment = styles.Get("CardCtaAlignment");
+  string singleCtaClass = textColor.Contains("white") ? "white" : "green";
+
+  /* string linkIcon = styles.Get("LinkIcon"); */
+
+  string borderColor = cardStyles.Get("CardBorderColor");
+  string cardStyle = cardStyles.Get("CardStyle");
+  string columnClass = cardStyles.Get("ColumnClass");
+  bool displayImages = cardStyles.Get("DisplayImages").ToLower() == "true";
+
+  /* string cssClasses = string.Format("button button-{0}", singleCtaClass); */
+  /* string iconClass = data.showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+  Dictionary<String, String> buttonStyles;
+
+  ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+  int buttonNumber = 0;
+
+  string buttonBgColor = "";
+  string buttonTextColor = "";
+  string buttonBorderColor = "";
+  string buttonBgColorHover = "";
+  string buttonTextColorHover = "";
+  string buttonBorderColorHover = "";
+
+  bool showCtaText = false;
+  string linkIcon = "";
+
+  string iconClass = "";
+
+  ICMSElement bgImage = Model.Element("ImageAsset", "TrayBackgroundImage");
+  string trayBgImagePosition = styles.Get("TrayBGImagePosition");
+  string trayBgImageOpacityPercentage = styles.Get("TrayBGImageOpacityPercentage");
+
+  <div @_Cisco_Helpers.HtmlAttribute("class", columnClass) @_Helpers.RenderICEAttribute(Model, true)>
+    <div class="card-wrap">
+      <div class="content @($"{cardBgColor} {textColor}")">
+
+        @if (trayBgGradientColor.ToLower() != "none" || !trayBgGradientColor.IsNullOrEmpty())
+        {
+          <div class="bg-radial @($"{trayBgGradientColor} {trayBgGradientOrientation} {gradientOpacity}")"></div>
+        }
+
+        @if (bgImage != null)
+        {
+          <div class="bg-img @trayBgImageOpacityPercentage">
+            @_Cisco_Helpers.RenderImageAsset(bgImage, Url, trayBgImagePosition, "", false, true)
+          </div>
+        }
+
+        @if (displayImages && data.image != null)
+        {
+          <p class="img-wrap margin-40">
+            @_Cisco_Helpers.RenderImageAsset(data.image, Url, "", "", false, true)
+          </p>
+        }
+        <div class="row row-gutter-16">
+
+          <div class="col">
+            @if (!string.IsNullOrWhiteSpace(data.title))
+            {
+              <p class="h5 @cardTitleAlignment" @_Helpers.RenderICEAttribute(data.titleElement)>@data.title</p>
+            }
+            <div class="@introTextAlignment">
+              @{ Html.RenderPartial("Editable/RawHtml", data.introTextElement); }
+            </div>
+          </div>
+
+          @if (data.callstoAction != null && data.callstoAction.Any())
+          {
+            ICMSLinkElement cta = data.callstoAction.FirstOrDefault();
+
+            buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+            buttonBgColor = buttonStyles.Get("ButtonBgColor");
+            buttonTextColor = buttonStyles.Get("ButtonTextColor");
+            buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+            buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+            buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+            buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+            showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+            linkIcon = buttonStyles.Get("LinkIcon");
+
+            iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+
+
+            <div class="@cardCtaAlignment">
+              @if (showCtaText)
+              {
+              <div>
+                <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+              </div>
+              }
+
+              @if (!showCtaText)
+              {
+              <div class="col-auto">
+                <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+              </div>
+              }
+            </div>
+
+          }
+        </div>
+      </div>
+
+      @if (cardStyle == "bottom-only")
+      {
+        <hr class="margin-0 @($"{borderColor} {cardStyle}")" />
+      }
+
+    </div>
+  </div>
+}
+
+@helper BorderedCard(ComponentCardData data, Dictionary<String, String> cardStyles)
+{
+  Dictionary<String, String> styles = data.customStyles;
+  string cardBgColor = styles.Get("CardBGColor");
+  string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+  string gradientOpacity = styles.Get("TrayBGImageOpacityPercentage");
+  string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+  string textColor = styles.Get("TextColor");
+  string cardTitleAlignment = styles.Get("CardTitleAlignment");
+  string introTextAlignment = styles.Get("IntroTextAlignment");
+  string cardCtaAlignment = styles.Get("CardCtaAlignment");
+  string cardImagePosition = styles.Get("CardImagePosition");
+  string cardImageWidth = styles.Get("CardImageWidth");
+  string singleCtaClass = textColor.Contains("white") ? "white" : "black";
+  /* string linkIcon = styles.Get("LinkIcon"); */
+
+  string borderColor = cardStyles.Get("CardBorderColor");
+  string columnClass = cardStyles.Get("ColumnClass");
+  bool displayImages = cardStyles.Get("DisplayImages").ToLower() == "true";
+  bool displaySingleCtaAsButton = cardStyles.Get("DisplaySingularCTAasButton").ToLower() == "true";
+
+  /* string cssClasses = string.Format("button button-outline-{0}", singleCtaClass); */
+  /* string iconClass = string.Format("icon {0}", linkIcon); */
+
+  ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+  int buttonNumber = 0;
+
+  Dictionary<String, String> buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+  string buttonBgColor = buttonStyles.Get("ButtonBgColor");
+  string buttonTextColor = buttonStyles.Get("ButtonTextColor");
+  string buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+  string buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+  string buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+  string buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+
+  bool showCtaText = showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+  string linkIcon = buttonStyles.Get("LinkIcon");
+
+  string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+
+  ICMSLinkElement cta = data.callstoAction.FirstOrDefault();
+
+  ICMSElement bgImage = Model.Element("ImageAsset", "TrayBackgroundImage");
+  string trayBgImagePosition = styles.Get("TrayBGImagePosition");
+  string trayBgImageOpacityPercentage = styles.Get("TrayBGImageOpacityPercentage");
+
+  <div @_Cisco_Helpers.HtmlAttribute("class", columnClass) @_Helpers.RenderICEAttribute(Model, true)>
+    <div class="card-wrap">
+      <div class="card-inner @($"{borderColor} {cardBgColor} {textColor}")">
+
+        @if (trayBgGradientColor.ToLower() != "none" || !trayBgGradientColor.IsNullOrEmpty())
+        {
+          <div class="bg-radial @($"{trayBgGradientColor} {trayBgGradientOrientation} {gradientOpacity}")"></div>
+        }
+
+        @if (bgImage != null)
+        {
+          <div class="bg-img @trayBgImageOpacityPercentage">
+            @_Cisco_Helpers.RenderImageAsset(bgImage, Url, trayBgImagePosition, "", false, true)
+          </div>
+        }
+
+        <div class="card-stack">
+          <div class="card-content">
+
+            @if (displayImages && data.image != null)
+            {
+              if (cardImagePosition == "card-image-position-top")
+              {
+                <div class="@($"{cardImageWidth} {cardImagePosition}")">
+                  <p class="img-wrap">
+                    @_Cisco_Helpers.RenderImageAsset(data.image, Url, "", "", false, true)
+                  </p>
+                </div>
+              }
+            }
+
+            <div class="content">
+              @if (!string.IsNullOrWhiteSpace(data.title))
+              {
+                <p class="h5 @cardTitleAlignment" @_Helpers.RenderICEAttribute(data.titleElement)>@data.title</p>
+              }
+              <div class="@($"{textColor} {introTextAlignment}")">
+                @{ Html.RenderPartial("Editable/RawHtml", data.introTextElement); }
+              </div>
+            </div>
+
+          </div>
+
+
+          @if (data.callstoAction != null && data.callstoAction.Any())
+          {
+            <div class="card-foot @cardCtaAlignment">
+              @if (displaySingleCtaAsButton)
+              {
+                <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+              }
+              else
+              {
+                @_Cisco_Helpers.RenderCardMultiCtaList(data.callstoAction, Url)
+              }
+            </div>
+          }
+
+          @if (displayImages && data.image != null)
+          {
+            if (cardImagePosition == "card-image-position-bot")
+            {
+              <div class="@($"{cardImageWidth} {cardImagePosition}")">
+                <p class="img-wrap">
+                  @_Cisco_Helpers.RenderImageAsset(data.image, Url, "", "", false, true)
+                </p>
+              </div>
+            }
+          }
+
+        </div>
+      </div>
+    </div>
+  </div>
+}

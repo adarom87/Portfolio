@@ -1,0 +1,124 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+    // ice
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    string heading = Model.GetElementValue("TrayHeading");
+    ICMSLinkElement[] trayCtas = Model.GetNavigationItems("TrayCallstoAction", NavigationElementType.LinkSet).ToArray();
+    ICMSElement image = Model.Element("ImageAsset", "Image");
+    string trayHtmlId = Model.GetElementValue("TrayID");
+
+    bool displayCaption = Model.GetElementValue("DisplayCaption").ToLower() == "true";
+    bool linkImage = Model.GetElementValue("LinkImage").ToLower() == "true";
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    // TODO: austin - add bg gradient opacity?
+    string trayBgColor = styles.Get("TrayBGColor");
+
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string gradientOpacity = styles.Get("TrayBGImageOpacityPercentage");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+
+    string textColor = styles.Get("TextColor");
+    /* string linkIcon = styles.Get("LinkIcon"); */
+    string imageStyle = styles.Get("ImageStyle");
+
+    bool floatImageRight = Model.GetElementValue("FloatImageRight").ToLower() == "true";
+    string leftColClass = floatImageRight ? "order-md-2" : "order-md-1";
+    string rightColClass = floatImageRight ? "order-md-1" : "order-md-2";
+
+    ICMSLinkElement singleCta = trayCtas.FirstOrDefault();
+    /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+    /* string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+
+    string ctaButtonColor = styles.Get("CTAButtonColor");
+    string ctaButtonColorResult = _Cisco_Functions.GetCTAButtonColor(trayBgColor, ctaButtonColor);
+    string ctaCSSClass = string.Format("button {0}", ctaButtonColorResult);
+
+
+    int buttonNumber = 0;
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+    Dictionary<String, String> buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+    string buttonBgColor = buttonStyles.Get("ButtonBgColor");
+    string buttonTextColor = buttonStyles.Get("ButtonTextColor");
+    string buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+    string buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+    string buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+    string buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+
+    bool showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true"; ;
+    string linkIcon = buttonStyles.Get("LinkIcon");
+    string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+
+    bool singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+
+
+    <section class="tray tray-image @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+        
+        @if (trayBgGradientColor.ToLower() != "none" || !trayBgGradientColor.IsNullOrEmpty())
+        {
+          <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation @gradientOpacity"></div>
+        }
+
+        <div class="container">
+            <div class="gutter-offset-wrap overflow-hidden">
+                <div class="row row-gutter-64">
+                    @if (image != null)
+                    {
+                        <div class="col-md-6 @leftColClass">
+                            <p class="img-wrap">
+                                @if (linkImage)
+                                {
+                                    // TODO: austin - what should this link to
+                                    @_Cisco_Helpers.RenderLinkedImageAsset(image, singleCta, Url, imageStyle, showCaption: displayCaption)
+                                }
+                                else
+                                {
+                                    @_Cisco_Helpers.RenderImageAsset(image, Url, imageStyle, showCaption: displayCaption)
+                                }
+                            </p>
+                        </div>
+                    }
+                    <div class="col-md-6 @rightColClass">
+                      <div class="content">
+                        @if (!string.IsNullOrWhiteSpace(heading))
+                        {
+                          <h2 @_Helpers.RenderICEAttribute(headingEl)>
+                            @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                          </h2>
+                        }
+
+                        @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }                                                                  
+                        @if (singleCtaButton && singleCta != null)
+                        {
+                          <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(singleCta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>          
+                        }
+                        else if (trayCtas.Any())
+                        {
+                          @_Cisco_Helpers.RenderCardMultiCtaList(trayCtas, Url)
+                        }
+                      </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+  }
+  catch (Exception e)
+  {
+      @LoggerService.LogViewError(Model, e)
+  }
+}

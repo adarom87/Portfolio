@@ -1,0 +1,114 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        var menuCardCtaData = new ComponentMenuCardCtaData(Model);
+
+        bool isMobile = ViewData["IsMobile"] + string.Empty == "true";
+
+        if (isMobile)
+        {
+            @MobileMenuCardCta(menuCardCtaData)
+        }
+        else
+        {
+            @DesktopMenuCardCta(menuCardCtaData)
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+        ;
+    }
+}
+
+@helper DesktopMenuCardCta(ComponentMenuCardCtaData data)
+{
+    if (data != null)
+    {
+        string compBgColor = data.customStyles.Get("ComponentBGColor");
+        bool hasCopy = _Cisco_Functions.HasCopy(data.leadinTextElement);
+
+        <div class="col-md-6" @_Helpers.RenderICEAttribute(data.model, true)>
+            <div class="card-wrap">
+                <div class="card-inner border clickable @compBgColor">
+                    <div class="row">
+                        <div class="col">
+                            @if (!string.IsNullOrWhiteSpace(data.heading))
+                            {
+                                <p class="h6" @_Helpers.RenderICEAttribute(data.headingElement)>
+                                    @data.heading
+                                </p>
+                            }
+
+                            @if (hasCopy)
+                            {
+                                <div class="opacity-70" @_Helpers.RenderICEAttribute(data.leadinTextElement)>
+                                    @data.leadinText
+                                </div>
+                            }
+
+                            @if (data.cta != null)
+                            {
+                                <p>@_Helpers.RenderCMSLink(data.cta, Url, cssClasses: "link-cta")</p>
+                            }
+                        </div>
+
+                        @if (data.image != null)
+                        {
+                            <div class="col-auto">
+                                <p class="thumb-wrap">
+                                    @_Cisco_Helpers.RenderImageAsset(data.image, Url, "round")
+                                </p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@helper MobileMenuCardCta(ComponentMenuCardCtaData data)
+{
+    if (data != null)
+    {
+        bool hasCopy = _Cisco_Functions.HasCopy(data.leadinTextElement);
+
+        <div class="clickable" @_Helpers.RenderICEAttribute(data.model, true)>
+            <div class="row">
+                @if (data.image != null)
+                {
+                    <div class="col-auto">
+                        <p class="thumb-wrap">
+                            @_Cisco_Helpers.RenderImageAsset(data.image, Url, "round")
+                        </p>
+                    </div>
+                }
+                <div class="col">
+                    @if (!string.IsNullOrWhiteSpace(data.heading))
+                    {
+                        <p class="h5">
+                            @_Helpers.RenderCMSLink(data.cta, Url, data.heading, cssClasses: "link-cta")
+                        </p>
+                    }
+
+                    @if (hasCopy)
+                    {
+                        <div class="opacity-70">
+                            <p @_Helpers.RenderICEAttribute(data.leadinTextElement)>
+                                @data.leadinText
+                            </p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}

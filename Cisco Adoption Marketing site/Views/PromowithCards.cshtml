@@ -1,0 +1,210 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+@using MoreLinq
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // ice elements
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    string heading = Model.GetElementValue("TrayHeading");
+    string leadinText = Model.GetElementValue("TrayLeadinText");
+    ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+    ICMSElement[] cards = Model.Elements("ComponentCard").ToArray();
+    string trayHtmlId = Model.GetElementValue("TrayID");
+
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string gradientOpacity = styles.Get("TrayBGImageOpacityPercentage");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+    string headingColor = styles.Get("HeadingColor");
+    string headingGradientColor = styles.Get("HeadingGradientColor");
+    string textColor = styles.Get("TextColor");
+
+    Dictionary<String, String> buttonStyles;
+
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+    int buttonNumber = 0;
+
+    string buttonBgColor = "";
+    string buttonTextColor = "";
+    string buttonBorderColor = "";
+    string buttonBgColorHover = "";
+    string buttonTextColorHover = "";
+    string buttonBorderColorHover = "";
+
+    bool showCtaText = false;
+    string linkIcon = "";
+
+    string iconClass = "";
+    bool singleCtaButton = false;
+
+
+    <section class="tray tray-cards @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+      
+      @if (trayBgGradientColor.ToLower() != "none" || !trayBgGradientColor.IsNullOrEmpty())
+      {
+        <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation @gradientOpacity"></div>
+      }
+
+      <div class="container">
+        <div class="row justify-content-between">
+
+
+          @if (!string.IsNullOrWhiteSpace(heading))
+          {
+            if (cta == null)
+            {
+              <div class="col-md-12">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+
+            if (cta != null)
+            {
+              <div class="col-md-8 col-xl-7">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+          }
+
+          @if (hasCopy)
+          {
+            <div class="col-md-8 col-lg-9">
+              <div class="font-size-lg tray-intro-textblock">
+                @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+              </div>
+            </div>
+          }
+
+          @if (cta != null)
+          {
+            buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+            buttonBgColor = buttonStyles.Get("ButtonBgColor");
+            buttonTextColor = buttonStyles.Get("ButtonTextColor");
+            buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+            buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+            buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+            buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+            showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+            linkIcon = buttonStyles.Get("LinkIcon");
+
+            iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+            singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+            if (singleCtaButton)
+            {
+              if (showCtaText)
+              {
+                <div class="col-md-4 col-lg-3">
+                  <p class="text-align-right">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+                </div>
+                buttonNumber++;
+              }
+
+              if (!showCtaText)
+              {
+                <div class="col-auto">
+                  <p class="text-align-right">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+                </div>
+                buttonNumber++;
+              }
+
+            }
+
+            if (!singleCtaButton)
+            {
+              <p class="text-align-right">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+            }
+
+
+
+          }
+
+
+
+
+          @if (cards.Any())
+          {
+            <div class="spacer-16"></div>
+
+            string cardsPerRowStr = styles.Get("CardsPerRow");
+            int cardsPerRow = _Functions.IntegerOrDefault(cardsPerRowStr, 3);
+
+            var bootstrapGrid = 12;
+            int lgCol = bootstrapGrid / cardsPerRow;
+            string bootstrapCols = string.Format("col-md-6 col-lg-{0}", lgCol);
+
+            // card styles
+            string displayImages = Model.GetElementValue("DisplayImages");
+            string cardCtaAsButton = Model.GetElementValue("DisplaySingularCTAasButton");
+            string showLinkText = Model.GetElementValue("ShowLinkText");
+
+            var cardStyles = new Dictionary<String, String>();
+            cardStyles.Add("CardStyle", styles.Get("CardStyle"));
+            cardStyles.Add("DisplayImages", displayImages);
+            cardStyles.Add("DisplaySingularCTAasButton", cardCtaAsButton);
+            cardStyles.Add("ColumnClass", bootstrapCols);
+            cardStyles.Add("ShowLinkText", showLinkText);
+            cardStyles.Add("CardBorderColor", styles.Get("CardBorderColor"));
+
+            // Check if the number of cards exceeds the specified cardsPerRow
+            if (cards.Count() > cardsPerRow)
+            {
+              // Create two rows of cards
+              <div class="row card-row margin-40bot-desktop-only">
+                @{
+                  ViewData["CardStyles"] = cardStyles;
+                  Html.RenderPartial("PageLayout/ComponentList", cards.Take(cardsPerRow));
+                  ViewData["CardStyles"] = null;
+                }
+              </div>
+              <div class="row card-row">
+                @{
+                  ViewData["CardStyles"] = cardStyles;
+                  Html.RenderPartial("PageLayout/ComponentList", cards.Skip(cardsPerRow));
+                  ViewData["CardStyles"] = null;
+                }
+              </div>
+            }
+            else
+            {
+              // Only one row of cards
+              <div class="row card-row">
+                @{
+                  ViewData["CardStyles"] = cardStyles;
+                  Html.RenderPartial("PageLayout/ComponentList", cards);
+                  ViewData["CardStyles"] = null;
+                }
+              </div>
+            }
+          }
+
+
+        </div>
+      </div>
+    </section>
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}

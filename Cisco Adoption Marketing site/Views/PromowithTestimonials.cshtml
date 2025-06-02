@@ -1,0 +1,220 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        // ice
+        ICMSElement headingEl = Model.Element("TrayHeading");
+        ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+        string heading = Model.GetElementValue("TrayHeading");
+        ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+        ICMSElement[] testimonials = Model.Elements("ComponentTestimonial", "Testimonial").ToArray();
+        string trayHtmlId = Model.GetElementValue("TrayID");
+
+        bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+        // swiper uid
+        string swiperUid = string.Format("swiper-{0}", Model.GetHashCode());
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string trayBgColor = styles.Get("TrayBGColor");
+        string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+        string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+        string textColor = styles.Get("TextColor");
+        /* string linkIcon = styles.Get("LinkIcon"); */
+        string imageStyle = styles.Get("ImageStyle");
+
+        bool displayImages = Model.GetElementValue("DisplayImages").ToLower() == "true";
+        bool displayAttributions = Model.GetElementValue("DisplayAttributions").ToLower() == "true";
+        bool autoRotate = Model.GetElementValue("AutoRotate").ToLower() == "true";
+
+        /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+        /* string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+
+        string ctaButtonColor = styles.Get("CTAButtonColor");
+        string ctaButtonColorResult = _Cisco_Functions.GetCTAButtonColor(trayBgColor, ctaButtonColor);
+        string ctaCSSClass = string.Format("button {0}", ctaButtonColorResult);
+
+        Dictionary<String, String> buttonStyles;
+
+        ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+        int buttonNumber = 0;
+
+        string buttonBgColor = "";
+        string buttonTextColor = "";
+        string buttonBorderColor = "";
+        string buttonBgColorHover = "";
+        string buttonTextColorHover = "";
+        string buttonBorderColorHover = "";
+
+        bool showCtaText = false;
+        string linkIcon = "";
+
+        string iconClass = "";
+        bool singleCtaButton = false;
+
+        <section class="tray tray-testimonials @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+            <div class="bg-radial opacity-70 @trayBgGradientColor @trayBgGradientOrientation"></div>
+            <div class="container">
+                <div class="row justify-content-between">
+                    <div class="col-md-8 col-xl-7">
+                        @if (!string.IsNullOrWhiteSpace(heading))
+                        {
+                            <h2 @_Helpers.RenderICEAttribute(headingEl)>
+                                @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                            </h2>
+                        }
+
+                        @if (hasCopy)
+                        {
+                            <div class="row">
+                                <div class="col-md-8 font-size-lg">
+                                    @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (cta != null)
+                    {
+                        <div class="col-auto">
+                          @{
+                            buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+                            buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                            buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                            buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                            buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                            buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                            buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                            showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                            linkIcon = buttonStyles.Get("LinkIcon");
+
+                            iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+                            singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+                            if (singleCtaButton)
+                            {
+                              <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+
+                              buttonNumber++;
+                            }
+
+                            if (!singleCtaButton)
+                            {
+                              <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+                            }
+                          }
+                        </div>
+                    }
+                </div>
+
+                @if (testimonials.Any())
+                {
+                    @* swiper uid on outermost div to support handleSwiperTestimonials function *@
+                    <div class="row @swiperUid">
+                        <div class="col-lg-9">
+                            <div class="swiper swiper-testimonials">
+                                <div class="swiper-wrapper">
+
+                                    @foreach (ICMSElement testimonial in testimonials)
+                                    {
+                                        ICMSElement image = testimonial.Element("ImageAsset", "Image");
+                                        ICMSElement testimonialTextEl = testimonial.Element("TestimonialText");
+                                        ICMSElement attributionEl = testimonial.Element("Attribution");
+                                        string attribution = testimonial.GetElementValue("Attribution");
+
+                                        bool testimonialHasCopy = _Cisco_Functions.HasCopy(testimonialTextEl);
+
+                                        <div class="swiper-slide" @_Helpers.RenderICEAttribute(testimonial, true)>
+                                            <div class="row">
+                                                @if (displayImages && image != null)
+                                                {
+                                                    <div class="col-md-3">
+                                                        <p class="img-wrap @imageStyle">
+                                                            @_Cisco_Helpers.RenderImageAsset(image, Url)
+                                                        </p>
+                                                    </div>
+                                                }
+
+                                                <div class="col-md-9">
+                                                    <div class="quote-wrap">
+
+                                                        @if (testimonialHasCopy)
+                                                        {
+                                                            <div class="quote">
+
+                                                                @{ Html.RenderPartial("Editable/RawHtml", testimonialTextEl); }
+                                                            </div>
+                                                        }
+
+                                                        @if (displayAttributions && !string.IsNullOrWhiteSpace(attribution))
+                                                        {
+                                                            <p class="cite" @_Helpers.RenderICEAttribute(attributionEl)>@attribution</p>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="swiper-scrollbar d-lg-none"></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3">
+                            <div class="swiper-testimonials-controls d-none d-lg-flex">
+                                <div class="button-prev">
+                                    <span class="icon-arrow-large"></span>
+                                </div>
+                                <div class="count"></div>
+                                <div class="button-next">
+                                    <span class="icon-arrow-large"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+            <script>
+                (function (swiperUid) {
+                    const auto = `@autoRotate`.toLowerCase() === "true";
+
+                    new Swiper(`.${swiperUid} .swiper-testimonials`, {
+                        autoplay: auto,
+                        autoHeight: true,
+                        effect: 'fade',
+                        fadeEffect: {
+                            crossFade: true
+                        },
+                        navigation: {
+                            nextEl: `.${swiperUid} .swiper-testimonials-controls .button-next`,
+                            prevEl: `.${swiperUid} .swiper-testimonials-controls .button-prev`,
+                        },
+                        pagination: {
+                            el: `.${swiperUid} .swiper-testimonials-controls .count`,
+                            type: 'fraction',
+                        },
+                        scrollbar: {
+                            el: `.${swiperUid} .swiper-testimonials .swiper-scrollbar`,
+                            draggable: true,
+                        },
+                    });
+                })("@swiperUid")
+            </script>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

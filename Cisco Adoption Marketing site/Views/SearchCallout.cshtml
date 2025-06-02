@@ -1,0 +1,71 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        // ice
+        ICMSElement headingEl = Model.Element("TrayHeading");
+
+        string heading = Model.GetElementValue("TrayHeading");
+        string placeHolder = Model.GetElementValue("PlaceHolderText");
+        placeHolder = !string.IsNullOrWhiteSpace(placeHolder) ? placeHolder : "Search";
+
+        var pageRequest = Model.Page as CMSPageRequest;
+        ICMSLinkElement searchLink = _Cisco_Functions.GetLinkFromSiteControl(pageRequest, "SearchResultsPage");
+
+        ICMSElement bgImage = Model.Element("ImageAsset", "TrayBGImage");
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string textColor = styles.Get("TextColor");
+        string trayBgColor = styles.Get("TrayBGColor");
+        string bgImageOpacity = styles.Get("TrayBGImageOpacityPercentage");
+        string bgImagePosition = styles.Get("TrayBGImagePosition");
+
+        <section class="tray tray-search @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true)>
+            @if (bgImage != null)
+            {
+                <div class="bg-img @bgImageOpacity @bgImagePosition">
+                    @_Cisco_Helpers.RenderImageAsset(bgImage, Url)
+                </div>
+            }
+            <div class="container">
+                <div class="row align-items-end">
+                    @if (!string.IsNullOrWhiteSpace(heading))
+                    {
+                        <div class="col-md-6">
+                            <h2 class="margin-32" @_Helpers.RenderICEAttribute(headingEl)>
+                                @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                            </h2>
+                        </div>
+                    }
+                    <div class="col-md-6">
+
+                        <form class="form-search" action="@_Functions.GetLinkAction(searchLink, Url)">
+                            <label>
+                                <span class="visually-hidden">Search</span>
+                                <input type="text" name="terms" placeholder="@placeHolder">
+                            </label>
+                            <button type="submit" aria-label="Submit Search">
+                                <img src="~/Content/assets/img/icons/search.svg" alt="Search">
+                            </button>
+                            <button type="reset" aria-label="Cancel Search">
+                                <span class="icon-close"></span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

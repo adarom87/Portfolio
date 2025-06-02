@@ -1,0 +1,51 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        ICMSElement trayTextEl = Model.Element("TrayText");
+        ICMSElement bgImage = Model.Element("ImageAsset", "BackgroundImage");
+        string trayHtmlId = Model.GetElementValue("TrayID");
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string textColor = styles.Get("TextColor");
+        string trayBgColor = styles.Get("TrayBGColor");
+        string bgImageOpacity = styles.Get("TrayBGImageOpacityPercentage");
+        string bgImagePosition = styles.Get("TrayBGImagePosition");
+
+        <section @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId) class="tray tray-overlay @trayBgColor">
+            @if (bgImage != null)
+            {
+                <div class="bg-img @bgImageOpacity @bgImagePosition">
+                    @_Cisco_Helpers.RenderImageAsset(bgImage, Url)
+                </div>
+            }
+
+            @if (trayTextEl != null)
+            {
+                <div class="container">
+                    <div class="row justify-content-center">
+                        <div class="col-md-9">
+                            <div class="content text-align-center">
+                                <div class="h4 @textColor">
+                                    @{ Html.RenderPartial("Editable/RawHtml", trayTextEl); }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

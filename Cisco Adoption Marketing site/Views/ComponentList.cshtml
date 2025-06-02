@@ -1,0 +1,41 @@
+﻿@model IEnumerable<ICMSElement>
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null && Model.Any())
+{
+    bool isMobile = ViewData["IsMobile"] + string.Empty == "true";
+
+    foreach (ICMSElement comp in Model)
+    {
+        bool renderHorizontalRule = (comp.RootElementName == "ComponentMenuCard" ||
+                                     comp.RootElementName == "ComponentMenuCardCTA")
+                                    && comp != Model.LastOrDefault()
+                                    && isMobile;
+
+        bool renderSpacer = comp.RootElementName == "ComponentMenuList"
+                            && isMobile;
+
+        try
+        {
+            Html.RenderPartial("Editable/" + comp.RootElementName, comp);
+
+            // spacing for mobile navigation menu items
+            if (renderHorizontalRule)
+            {
+                <hr />
+            }
+
+            if (renderSpacer)
+            {
+                <div class="spacer-40"></div>
+            }
+            // spacing end
+        }
+        catch (Exception e)
+        {
+            @(comp.IsPreview ? e.Message : string.Empty)
+            @LoggerService.LogViewError(comp, e)
+        }
+    }
+}

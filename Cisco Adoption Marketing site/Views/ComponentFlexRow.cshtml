@@ -1,0 +1,55 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        var flexRowData = new ComponentFlexRowData(Model);
+
+        if (flexRowData.isSingleColumn)
+        {
+            @SingleColumn(flexRowData)
+        }
+        else
+        {
+            @TwoColumn(flexRowData)
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}
+
+@helper SingleColumn(ComponentFlexRowData data)
+{
+    if (data != null && _Cisco_Functions.HasCopy(data.columnCopyElement))
+    {
+        <div class="img-wrap font-size-lg">
+            @{ Html.RenderPartial("Editable/RawHtml", data.columnCopyElement); }
+        </div>
+    }
+}
+
+@helper TwoColumn(ComponentFlexRowData data)
+{
+    if (data != null)
+    {
+        Dictionary<String, String> colClass = _Cisco_Functions.GetFlexColumnRowClasses(data.columnSplit);
+
+        <div class="row" @_Helpers.RenderICEAttribute(Model, true)>
+            @* no null check on copy to keep columns *@
+            <div class="@colClass["leftColClass"] font-size-lg">
+                @{ Html.RenderPartial("Editable/RawHtml", data.columnCopyElement); }
+            </div>
+
+            <div class="@colClass["rightColClass"] font-size-lg">
+                @{ Html.RenderPartial("Editable/RawHtml", data.additionalColumnCopyElement); }
+            </div>
+        </div>
+    }
+}

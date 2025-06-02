@@ -1,0 +1,35 @@
+﻿@model CMSPageRequest
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        ICMSElement announcementBanner = _Cisco_Functions.GetAnnouncementBanner(Model);
+        ICMSElement hero = Model.Element("Hero");
+        ICMSElement[] trays = _Cisco_Functions.GetPageTrays(Model);
+
+        if (announcementBanner != null)
+        {
+            Html.RenderPartial("Editable/AnnouncementBanner", announcementBanner);
+        }
+
+        if (hero != null)
+        {
+            Html.RenderPartial("Editable/Hero", hero);
+        }
+
+        Html.RenderPartial("PageLayout/Breadcrumbs", Model);
+
+        if (trays.Any())
+        {
+            Html.RenderPartial("PageLayout/ComponentList", trays);
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

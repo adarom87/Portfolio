@@ -1,0 +1,44 @@
+﻿@model Ingeniux.Runtime.CMSPageRequest
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@{
+    try
+    {
+        ICMSElement siteControl = _Cisco_Functions.GetSiteControl(Model);
+
+        // page title / browser bar
+        string title = Model.GetElementValue("Title");
+        string browserBarTitlePrefix = siteControl != null ? siteControl.GetElementValue("BrowserBarTitlePrefix") : string.Empty;
+        string tabTitle = !string.IsNullOrWhiteSpace(browserBarTitlePrefix) ? string.Format("{0} | {1}", browserBarTitlePrefix, title) : title;
+        <title>@tabTitle</title>
+
+        // base
+        string baseUrl = _Cisco_Functions.BaseUrl();
+        <base href="@baseUrl" />
+
+        // canonical
+        string canonical = string.Format("{0}{1}", baseUrl, Model.ID);
+        <link rel="canonical" href="@canonical" />
+
+        // favicon
+        string favicon = siteControl != null ? siteControl.GetElementValue("Favicon") : string.Empty;
+        string faviconHref = !string.IsNullOrWhiteSpace(favicon) ? Url.Asset(favicon, siteControl) : "content/assets/img/favicon.png";
+        <link rel="shortcut icon" type="image/png" href="@faviconHref" />
+
+        // seo
+        @_Cisco_Helpers.RenderMetaData(Model, siteControl)
+
+        // styles
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css">
+        @_Cisco_Functions.BundleStyles()
+
+        // scripts
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        @_Cisco_Functions.BundleScripts()
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

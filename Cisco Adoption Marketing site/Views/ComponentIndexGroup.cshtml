@@ -1,0 +1,170 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        var indexGroupData = new ComponentIndexGroupData(Model);
+
+        bool isCondensedIndex = ViewData["IsCondensedGroup"] + string.Empty == "true";
+        bool isExpandedIndex = ViewData["IsExpandedGroup"] + string.Empty == "true";
+
+        if (isCondensedIndex)
+        {
+            @PromoIndexCondensedGroup(indexGroupData)
+        }
+        else if (isExpandedIndex)
+        {
+            @PromoIndexExpandedGroup(indexGroupData)
+        }
+        else
+        {
+            throw new Exception("ViewData value not passed.");
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}
+
+@helper PromoIndexCondensedGroup(ComponentIndexGroupData data)
+{
+    if (data != null)
+    {
+        @* added outer div for ice *@
+        <div class="condensed-group" @_Helpers.RenderICEAttribute(data.model, true)>
+            <hr>
+            <div class="row">
+                @if (!string.IsNullOrWhiteSpace(data.subheading))
+                {
+                    <div class="col-md-6">
+                        <p class="h5" @_Helpers.RenderICEAttribute(data.subHeadingElement)>@data.subheading</p>
+                    </div>
+                }
+
+                @if (data.links != null && data.links.Any())
+                {
+                    <div class="col-md-6">
+                        <ul class="list-no-bull links-cta">
+                            @foreach (ICMSLinkElement link in data.links)
+                            {
+                                <li>
+                                    @_Helpers.RenderCMSLink(link, Url)
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@helper PromoIndexExpandedGroup(ComponentIndexGroupData data)
+{
+    if (data != null)
+    {
+        string baseUrl = _Cisco_Functions.BaseUrl();
+
+        @* added outer div for ice *@
+        <div @_Helpers.RenderICEAttribute(data.model, true)>
+            @if (!string.IsNullOrWhiteSpace(data.subheading))
+            {
+                <p class="h4" @_Helpers.RenderICEAttribute(data.subHeadingElement)>@data.subheading</p>
+            }
+
+            @if (data.links != null && data.links.Any())
+            {
+                int half = data.links.Count() / 2 + data.links.Count() % 2;
+                ICMSLinkElement[] leftHalf = data.links.Take(half).ToArray();
+                ICMSLinkElement[] rightHalf = data.links.Reverse().Take(data.links.Count() - half).ToArray();
+
+                <div class="row">
+                    <div class="col-md-6">
+                        @if (leftHalf.Any())
+                        {
+                            foreach (ICMSLinkElement link in leftHalf)
+                            {
+                                string abs = link.GetAttributeValue("Abstract");
+                                string marginAdjust = !string.IsNullOrWhiteSpace(abs) ? string.Empty : "margin-16";
+                                string thumbnail = link.GetAttributeValue("Thumbnail");
+                                string thumbnailSrc = string.Format("{0}{1}", baseUrl, thumbnail);
+                                bool isLastLink = link == leftHalf.LastOrDefault();
+
+                                <hr class="margin-16">
+                                <div class="row align-items-center">
+                                    @if (!string.IsNullOrWhiteSpace(thumbnail))
+                                    {
+                                        <div class="col-auto">
+                                            <p class="icon-wrap margin-16 img-icon-45">
+                                                @_Helpers.RenderImage(thumbnailSrc, Url, link.LinkName, link)
+                                            </p>
+                                        </div>
+                                    }
+                                    <div class="col">
+                                        <p class="h5 @marginAdjust">
+                                            @_Helpers.RenderCMSLink(link, Url, cssClasses: "link-cta")
+                                        </p>
+                                        @if (!string.IsNullOrWhiteSpace(abs))
+                                        {
+                                            <p class="margin-16">@abs</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                if (isLastLink)
+                                {
+                                    <hr class="margin-16">
+                                }
+                            }
+                        }
+                    </div>
+                    <div class="col-md-6">
+                        @if (rightHalf.Any())
+                        {
+                            foreach (ICMSLinkElement link in rightHalf)
+                            {
+                                string abs = link.GetAttributeValue("Abstract");
+                                string marginAdjust = !string.IsNullOrWhiteSpace(abs) ? string.Empty : "margin-16";
+                                string thumbnail = link.GetAttributeValue("Thumbnail");
+                                string thumbnailSrc = string.Format("{0}{1}", baseUrl, thumbnail);
+                                bool isLastLink = link == rightHalf.LastOrDefault();
+
+                                <hr class="margin-16">
+                                <div class="row align-items-center">
+                                    @if (!string.IsNullOrWhiteSpace(thumbnail))
+                                    {
+                                        <div class="col-auto">
+                                            <p class="icon-wrap margin-16 img-icon-45">
+                                                @_Helpers.RenderImage(thumbnailSrc, Url, link.LinkName, link)
+                                            </p>
+                                        </div>
+                                    }
+                                    <div class="col">
+                                        <p class="h5 @marginAdjust">
+                                            @_Helpers.RenderCMSLink(link, Url, cssClasses: "link-cta")
+                                        </p>
+                                        @if (!string.IsNullOrWhiteSpace(abs))
+                                        {
+                                            <p class="margin-16">@abs</p>
+                                        }
+                                    </div>
+                                </div>
+
+                                if (isLastLink)
+                                {
+                                    <hr class="margin-16">
+                                }
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}

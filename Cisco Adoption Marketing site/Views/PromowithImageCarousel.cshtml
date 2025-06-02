@@ -1,0 +1,276 @@
+﻿@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+@model Ingeniux.Runtime.ICMSElement
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        // ice
+        ICMSElement headingEl = Model.Element("TrayHeading");
+        ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+        string heading = Model.GetElementValue("TrayHeading");
+        ICMSElement[] images = Model.Elements("ComponentImage", "Image").ToArray();
+        string trayHtmlId = Model.GetElementValue("TrayID");
+
+        ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+        string href = _Functions.GetLinkAction(cta, Url);        
+        var target = _Functions.GetLinkTarget(cta).ToString();
+
+
+        // swiper uid
+        string swiperUid = string.Format("swiper-{0}", Model.GetHashCode());
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string trayBgColor = styles.Get("TrayBGColor");
+        string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+        string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+        string textColor = styles.Get("TextColor");        
+        string imageStyle = styles.Get("ImageStyle");
+        string carouselLayout = styles.Get("CarouselLayout");
+
+
+        bool floatImagesRight = Model.GetElementValue("CarouselRight").ToLower() == "true";
+        string leftColClass = floatImagesRight ? "order-md-2" : "order-md-1";
+        string rightColClass = floatImagesRight ? "order-md-1" : "order-md-2";
+
+        bool displayCaptions = Model.GetElementValue("DisplayCaptions").ToLower() == "true";
+        bool linkImages = Model.GetElementValue("LinkImages").ToLower() == "true";
+        bool autoRotate = Model.GetElementValue("AutoRotate").ToLower() == "true";
+
+        ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+        int buttonNumber = 0;
+
+        Dictionary<String, String> buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+        string buttonBgColor = buttonStyles.Get("ButtonBgColor");
+        string buttonTextColor = buttonStyles.Get("ButtonTextColor");
+        string buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+        string buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+        string buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+        string buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+
+        bool showCtaText = showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+        string linkIcon = buttonStyles.Get("LinkIcon");
+        string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;        
+
+        string linkText = showCtaText ? _Functions.GetLinkName(cta) : string.Empty;
+
+        string ctaButtonColor = styles.Get("CTAButtonColor");
+        string ctaButtonColorResult = _Cisco_Functions.GetCTAButtonColor(trayBgColor, ctaButtonColor);
+        string ctaCSSClass = string.Format("button {0} button-hover-eucalyptus", ctaButtonColorResult);
+
+
+        <section class="tray tray-carousel @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+            <div class="bg-radial opacity-70 @trayBgGradientColor @trayBgGradientOrientation"></div>
+            <div class="container">
+                <div class="gutter-offset-wrap overflow-hidden @swiperUid">
+                  <div class="row row-gutter-64">
+
+                    @if (carouselLayout == "carousel-two-col")
+                    {
+                      <div class="col-md-8 col-lg-9 @leftColClass">
+                        <div class="swiper-images-wrap">
+                          <div class="swiper swiper-images">
+                            <div class="swiper-wrapper">
+                              @if (images.Any())
+                              {
+                                foreach (ICMSElement image in images)
+                                {
+                                  <div class="swiper-slide">
+                                    <div class="img-wrap @imageStyle">
+                                      @if (linkImages)
+                                      {
+                                        @_Cisco_Helpers.RenderLinkedComponentImage(image, Url, showCaption: displayCaptions)
+                                      }
+                                      else
+                                      {
+                                        @_Cisco_Helpers.RenderComponentImage(image, Url, showCaption: displayCaptions)
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              }
+                            </div>
+                            <div class="swiper-scrollbar d-lg-none"></div>
+                            <div class="swiper-images-controls d-none d-lg-flex">
+                              <div class="button-prev">
+                                <span class="icon-arrow-large"></span>
+                              </div>
+                              <div class="swiper-pagination"></div>
+                              <div class="button-next">
+                                <span class="icon-arrow-large"></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="spacer-32"></div>
+                      </div>
+                      <div class="col-md-4 col-lg-3 @rightColClass">
+                        <div class="content">
+                          <h2 @_Helpers.RenderICEAttribute(headingEl) class="js--swiper-title">
+                            @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                          </h2>
+
+                          <div class="js--swiper-body">
+                            @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+                          </div>                          
+
+                          <p class="js--swiper-cta">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+                        </div>
+                      </div>
+                    }
+
+                    @if (carouselLayout == "carousel-full-col")
+                    {
+                      <div class="col-md-12 col-lg-12 @leftColClass">
+                        <div class="swiper-images-wrap">
+                          <div class="swiper swiper-images">
+                            <div class="swiper-wrapper">
+                              @if (images.Any())
+                              {
+                                foreach (ICMSElement image in images)
+                                {
+                                  <div class="swiper-slide">
+                                    <div class="img-wrap @imageStyle">
+                                      @if (linkImages)
+                                      {
+                                        @_Cisco_Helpers.RenderLinkedComponentImage(image, Url, showCaption: displayCaptions)
+                                      }
+                                      else
+                                      {
+                                        @_Cisco_Helpers.RenderComponentImage(image, Url, showCaption: displayCaptions)
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              }
+                            </div>
+                            <div class="swiper-scrollbar d-lg-none"></div>
+                            <div class="swiper-images-controls d-none d-lg-flex">
+                              <div class="button-prev">
+                                <span class="icon-arrow-large"></span>
+                              </div>
+                              <div class="swiper-pagination"></div>
+                              <div class="button-next">
+                                <span class="icon-arrow-large"></span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="spacer-32"></div>
+                      </div>
+                      <div class="col-md-12 col-lg-12 @rightColClass">
+                        <div class="content">
+                          <h2 @_Helpers.RenderICEAttribute(headingEl) class="js--swiper-title">
+                            @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                          </h2>
+
+                          <div class="js--swiper-body">
+                            @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+                          </div>
+
+                          <p class="js--swiper-cta">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+                        </div>
+                      </div>
+                    }
+                    
+                  </div>
+                </div>
+            </div>
+            <script>
+                (function (swiperUid) {
+                    const auto = `@autoRotate`.toLowerCase() === "true";
+                    const showCtaText = `@showCtaText`.toLowerCase() === "true";
+                    new Swiper(`.${swiperUid} .swiper-images`, {
+                        autoplay: auto,
+                        autoHeight: true,
+                        navigation: {
+                            nextEl: `.${swiperUid} .swiper-images-controls .button-next`,
+                            prevEl: `.${swiperUid} .swiper-images-controls .button-prev`,
+                        },
+                        pagination: {
+                            el: `.${swiperUid} .swiper-images-controls .swiper-pagination`,
+                            clickable: true,
+                            renderBullet: function (index, className) {
+                                return '<span class="' + className + '">' + (index + 1) + "</span>";
+                            },
+                        },
+                        scrollbar: {
+                            el: '.swiper-images .swiper-scrollbar',
+                            draggable: true,
+                        },
+                        on: {
+                            init: () => {
+                                const activeSlide = document.querySelector(`.${swiperUid} .swiper-slide-active`);
+                                @* swiper helper attached > _cisco_helpers.rendercomponentimage *@
+                                const data = activeSlide.querySelector(`.${swiperUid} .js--swiperhelper`);
+                                const title = data.getAttribute("data-title");
+                                const intro = data.getAttribute("data-intro");
+                                const href = data.getAttribute("data-href");
+                                const target = data.getAttribute("data-target");
+                                const linkText= data.getAttribute("data-linkText");
+                                const linkTitle = data.getAttribute("data-linkTitle");
+
+                                document.querySelector(`.${swiperUid} .js--swiper-title`).innerHTML = title;
+                                document.querySelector(`.${swiperUid} .js--swiper-body`).innerHTML = intro;
+                                const cta = document.querySelector(`.${swiperUid} .js--swiper-cta a`);
+
+                                if (cta && href) {
+                                    const iconSpan = cta.firstElementChild;
+                                    cta.style.visibility = "initial";
+                                    cta.setAttribute("href", href);
+                                    cta.setAttribute("target", target);
+                                    cta.setAttribute("title", linkTitle);
+                                    if (showCtaText)
+                                        cta.innerText = linkText;
+                                    cta.appendChild(iconSpan);
+                                } else {
+                                    cta.style.visibility = "hidden";    
+                                }
+                            },
+                            slideChangeTransitionEnd: () => {
+                                const activeSlide = document.querySelector(`.${swiperUid} .swiper-slide-active`);
+                                const data = activeSlide.querySelector(`.js--swiperhelper`);
+                                const title = data.getAttribute("data-title");
+                                const intro = data.getAttribute("data-intro");
+                                const href = data.getAttribute("data-href");
+                                const target = data.getAttribute("data-target");
+                                const linkText= data.getAttribute("data-linkText");
+                                const linkTitle = data.getAttribute("data-linkTitle");
+                                const cta = document.querySelector(`.${swiperUid} .js--swiper-cta a`);
+
+                                if (cta && href) {
+                                    const iconSpan = cta.firstElementChild;
+                                    cta.style.visibility = "initial";
+                                    cta.setAttribute("href", href);
+                                    cta.setAttribute("target", target);
+                                    cta.setAttribute("title", linkTitle);
+                                    if (showCtaText)
+                                        cta.innerText = linkText;
+                                    cta.appendChild(iconSpan);
+                                } else {
+                                    cta.style.visibility = "hidden";    
+                                }
+
+                                document.querySelector(`.${swiperUid} .js--swiper-title`).innerHTML = title;
+                                document.querySelector(`.${swiperUid} .js--swiper-body`).innerHTML = intro;
+                            }
+                        },
+
+                    });
+                })("@swiperUid")
+            </script>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

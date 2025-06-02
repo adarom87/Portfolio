@@ -1,0 +1,151 @@
+﻿@model CMSPageRequest
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+@using Ingeniux.Search
+@using Ionic.Zlib
+
+@{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        ICMSElement announcementBanner = _Cisco_Functions.GetAnnouncementBanner(Model);
+
+        var searchCollection = Model.Tag as SearchResultsCollection;
+        bool hasResults = searchCollection?.Any() ?? false;
+
+        string thisPageUrl = _Functions.ThisPageUrl(Model, Url);
+        string queryString = Request.Url?.Query ?? string.Empty;
+
+        string termQs = _Functions.GetQuerystring(Model, "terms", string.Empty);
+        string pageNumberQs = _Functions.GetQuerystring(Model, "page", "1");
+        string pageSizeQs = _Functions.GetQuerystring(Model, "pagesize", "10");
+
+        int totalResultsCount = searchCollection?.TotalCount ?? 0;
+
+        int pageSize = _Functions.IntegerOrDefault(pageSizeQs, 10);
+        int pageNumber = _Functions.IntegerOrDefault(pageNumberQs, 1);
+
+        int currentPageResultStart = Math.Min(totalResultsCount, pageSize * (pageNumber - 1) + 1);
+        int currentPageResultEnd = Math.Min(currentPageResultStart + pageSize - 1, totalResultsCount);
+
+        var totalPages = (int)Math.Ceiling((double)totalResultsCount / pageSize);
+
+        if (announcementBanner != null)
+        {
+            Html.RenderPartial("Editable/AnnouncementBanner", announcementBanner);
+        }
+
+        Html.RenderPartial("PageLayout/Breadcrumbs", Model);
+
+        <section class="tray">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+
+                        <form class="form-search">
+                            <label>
+                                <span class="visually-hidden">Search</span>
+                                <input type="text" placeholder="Search" name="terms">
+                            </label>
+                            <button type="submit" aria-label="Submit Search">
+                                <img src="~/Content/assets/img/icons/search.svg" alt="Search">
+                            </button>
+                            <button type="button" aria-label="Cancel Search">
+                                <span class="icon-close"></span>
+                            </button>
+                        </form>
+                        
+                        <div class="results-info">
+                            @{
+                                if (!string.IsNullOrWhiteSpace(termQs) && totalResultsCount > 0)
+                                {
+                                    <p>
+                                        Showing @currentPageResultStart-@currentPageResultEnd out of
+                                        <strong>@totalResultsCount</strong> for: <strong>@termQs</strong>
+                                    </p>
+                                }
+                                else
+                                {
+                                    <p>No results for "@termQs".</p>
+                                }
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(termQs) && hasResults)
+                        {
+                            foreach (SearchResultItem result in searchCollection)
+                            {
+                                Dictionary<string, string> addlFields = result.AdditionalFields;
+                                string name = result.Name;
+                                string url = result.URL;
+
+                                addlFields.TryGetValue("Abstract", out string abs);
+
+                                <div class="listing">
+                                    <p class="h4">
+                                        <a href="@url">@name</a>
+                                    </p>
+                                    <p data-search-item>@(new HtmlString(abs))</p>
+                                </div>
+                                <hr>
+                            }
+                        }
+                        <script>
+                            HighlightSearchResultAbstract("@termQs");
+                        </script>
+                        @SearchPagination(totalResultsCount, pageSize, pageNumber, totalPages, thisPageUrl, queryString)
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}
+
+@helper SearchPagination(int totalResultsCount, int resultsPerPage, int currentPage, int totalPages, string url, string queryString, bool showPreviousNextIcons = true)
+{
+    queryString = _Cisco_Functions.RemoveQueryParametersByKey(queryString, "page");
+    string builtUrl = string.Format("{0}?{1}&page=", url, queryString);
+
+    if (totalResultsCount > resultsPerPage)
+    {
+        <div class="pager">
+            @if (showPreviousNextIcons)
+            {
+                bool isFirstPage = currentPage == 1;
+                string prevHref = isFirstPage ? string.Empty : string.Format("{0}{1}", builtUrl, currentPage - 1);
+                string disablePrev = isFirstPage ? "disabled-anchor" : string.Empty;
+
+                <a title="Previous" @_Cisco_Helpers.HtmlAttribute("href", prevHref) @_Cisco_Helpers.HtmlAttribute("class", disablePrev)>
+                    <span class="icon-arrow">
+                        <span class="sr-only">previous page</span>
+                    </span>
+                </a>
+            }
+
+            @for (var pageNum = 1; pageNum <= totalPages; pageNum++)
+            {
+                string active = pageNum == currentPage ? "on" : string.Empty;
+
+                <a href="@builtUrl@pageNum" @_Cisco_Helpers.HtmlAttribute("class", active) aria-label="Search result page @pageNum">@pageNum</a>
+            }
+
+            @if (showPreviousNextIcons)
+            {
+                bool isLastPage = currentPage == totalPages;
+                string nextHref = isLastPage ? string.Empty : string.Format("{0}{1}", builtUrl, currentPage + 1);
+                string disableNext = isLastPage ? "disabled-anchor" : string.Empty;
+
+                <a title="Next" @_Cisco_Helpers.HtmlAttribute("href", nextHref) @_Cisco_Helpers.HtmlAttribute("class", disableNext)>
+                    <span class="icon-arrow">
+                        <span class="sr-only">next page</span>
+                    </span>
+                </a>
+            }
+        </div>
+    }
+}

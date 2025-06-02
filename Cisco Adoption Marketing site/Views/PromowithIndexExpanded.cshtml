@@ -1,0 +1,134 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        // ice
+        ICMSElement headingEl = Model.Element("TrayHeading");
+        ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+        string heading = Model.GetElementValue("TrayHeading");
+        ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+        ICMSElement[] indexGroups = Model.Elements(null, "IndexGroup").ToArray();
+        string trayHtmlId = Model.GetElementValue("TrayID");
+
+        bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+        // styles
+        Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+        string trayBgColor = styles.Get("TrayBGColor");
+        string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+        string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+        string headingColor = styles.Get("HeadingColor");
+        string headingGradientColor = styles.Get("HeadingGradientColor");
+        string textColor = styles.Get("TextColor");
+        /* string linkIcon = styles.Get("LinkIcon"); */
+
+        /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+        /* string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+
+        string ctaButtonColor = styles.Get("CTAButtonColor");
+        string ctaButtonColorResult = _Cisco_Functions.GetCTAButtonColor(trayBgColor, ctaButtonColor);
+        string ctaCSSClass = string.Format("button {0}", ctaButtonColorResult);
+
+        Dictionary<String, String> buttonStyles;
+
+        ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+        int buttonNumber = 0;
+
+        string buttonBgColor = "";
+        string buttonTextColor = "";
+        string buttonBorderColor = "";
+        string buttonBgColorHover = "";
+        string buttonTextColorHover = "";
+        string buttonBorderColorHover = "";
+
+        bool showCtaText = false;
+        string linkIcon = "";
+
+        string iconClass = "";
+        bool singleCtaButton = false;
+
+        <section class="tray tray-index @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+            <div class="bg-radial opacity-70 @trayBgGradientColor @trayBgGradientOrientation"></div>
+            <div class="container">
+                <div class="row justify-content-between">
+                    <div class="col-md-8 col-xl-7">
+                        @if (!string.IsNullOrWhiteSpace(heading))
+                        {
+                            <h2 class="@headingColor @headingGradientColor" @_Helpers.RenderICEAttribute(headingEl)>
+                                @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                            </h2>
+                        }
+
+                        @if (hasCopy)
+                        {
+                            <div class="row">
+                                <div class="col-md font-size-lg">
+                                    @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    @if (cta != null)
+                    {
+                        <div class="col-auto">
+                          @{
+                            buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+                            buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                            buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                            buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                            buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                            buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                            buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                            showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                            linkIcon = buttonStyles.Get("LinkIcon");
+
+                            iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+                            singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+                            if (singleCtaButton)
+                            {
+                              <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+
+                              buttonNumber++;
+                            }
+
+                            if (!singleCtaButton)
+                            {
+                              <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+                            }
+                          }
+                        </div>
+                    }
+                </div>
+                <div class="spacer-40"></div>
+                <div class="row justify-content-end">
+                    <div class="col-lg-10">
+
+                        @if (indexGroups.Any())
+                        {
+                            ViewData["IsExpandedGroup"] = "true";
+                            Html.RenderPartial("PageLayout/ComponentList", indexGroups);
+                            ViewData["IsExpandedGroup"] = null;
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

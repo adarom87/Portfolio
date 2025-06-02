@@ -1,0 +1,180 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // ice
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    string heading = Model.GetElementValue("TrayHeading");
+    ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+    ICMSElement[] accordionRows = Model.Elements("ComponentAccordionRow", "Row").ToArray();
+    string trayHtmlId = Model.GetElementValue("TrayID");
+
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+    string headingColor = styles.Get("HeadingColor");
+    string headingGradientColor = styles.Get("HeadingGradientColor");
+    string textColor = styles.Get("TextColor");
+    /* string linkIcon = styles.Get("LinkIcon"); */
+    string expandedRowGradientColor = styles.Get("ExpandedRowGradientColor");
+
+    /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+    /* string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+    
+    Dictionary<String, String> buttonStyles;
+
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+    int buttonNumber = 0;
+
+    string buttonBgColor = "";
+    string buttonTextColor = "";
+    string buttonBorderColor = "";
+    string buttonBgColorHover = "";
+    string buttonTextColorHover = "";
+    string buttonBorderColorHover = "";
+
+    bool showCtaText = false;
+    string linkIcon = "";
+
+    string iconClass = "";
+    bool singleCtaButton = false;
+
+    <section class="tray tray-accordions @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+      <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation opacity-70"></div>
+      <div class="container">
+        <div class="row justify-content-between">
+          @if (!string.IsNullOrWhiteSpace(heading))
+          {
+            if (cta == null)
+            {
+              <div class="col-md-12">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+
+            if (cta != null)
+            {
+              <div class="col-md-8 col-xl-7">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+          }
+
+          @if (cta != null)
+          {
+            <div class="col-auto">
+              @{
+                buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+                buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                linkIcon = buttonStyles.Get("LinkIcon");
+
+                iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+                singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";              
+                if (singleCtaButton)
+                {
+                <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+
+                buttonNumber++;
+                }
+
+                if (!singleCtaButton)
+                {
+                <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+                }
+              }
+            </div>
+          }
+        </div>
+
+        @if (hasCopy)
+        {
+          <div class="row">
+            <div class="col-md-8 col-lg-6">
+              <div class="font-size-lg">
+                @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+              </div>
+            </div>
+          </div>
+        }
+        <div class="spacer-16"></div>
+        @if (accordionRows.Any())
+        {
+          <div class="row justify-content-end">
+            <div class="col-lg-10">
+              <div class="accordions">
+                @foreach (ICMSElement accordion in accordionRows)
+                {
+                  // ice
+                  ICMSElement titleEl = accordion.Element("RowTitle");
+                  ICMSElement introTextEl = accordion.Element("IntroText");
+
+                  string title = accordion.GetElementValue("RowTitle");
+                  // TODO: austin - where does cta go?
+                  ICMSLinkElement innerCta = accordion.GetLinkItem("CalltoAction");
+
+                  bool accordHasCopy = _Cisco_Functions.HasCopy(introTextEl);
+
+                  <div class="accordion" @_Helpers.RenderICEAttribute(accordion, true)>
+                    <div class="bg-radial @expandedRowGradientColor"></div>
+                    <div class="content @textColor">
+                      @if (!string.IsNullOrWhiteSpace(title))
+                      {
+                        <div class="h4 title">
+                          <a href="javascript:;" class="@textColor" @_Helpers.RenderICEAttribute(titleEl)>
+                            @title
+                            <span class="toggle" title="Toggle">
+                              <span class="icon-close"></span>
+                            </span>
+                          </a>
+                        </div>
+                      }
+
+                      @if (accordHasCopy)
+                      {
+                        <div class="details">
+                          <div class="inner">
+                            @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}

@@ -1,0 +1,53 @@
+﻿@model CMSPageRequest
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@{
+    try
+    {
+        @LoggerService.Debug(Model)
+
+        ICMSElement announcementBanner = _Cisco_Functions.GetAnnouncementBanner(Model);
+        ICMSElement hero = Model.Element("Hero");
+        ICMSElement bodyCopy = Model.Element("BodyCopy");
+        ICMSElement[] trays = _Cisco_Functions.GetPageTrays(Model);
+
+        if (announcementBanner != null)
+        {
+            Html.RenderPartial("Editable/AnnouncementBanner", announcementBanner);
+        }
+
+        if (hero != null)
+        {
+            Html.RenderPartial("Editable/Hero", hero);
+        }
+
+        Html.RenderPartial("PageLayout/Breadcrumbs", Model);
+
+        if (bodyCopy != null && string.IsNullOrWhiteSpace(bodyCopy.Value) == false)
+        {
+            string customId = Model.GetElementValue("CustomIDforBodyCopy");
+
+            <section class="tray" @_Cisco_Helpers.HtmlAttribute("id", customId)>
+                <div class="container">
+                    <div class="row justify-content-center">
+                        <div class="col-md-10">
+                            @{                                
+                                Html.RenderPartial("Editable/RawHtml", bodyCopy);
+                            }
+                        </div>
+                    </div>
+                </div>
+            </section>
+        }
+
+        if (trays.Any())
+        {
+            Html.RenderPartial("PageLayout/ComponentList", trays);
+        }
+    }
+    catch (Exception e)
+    {
+        @LoggerService.LogViewError(Model, e)
+    }
+}

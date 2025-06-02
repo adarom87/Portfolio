@@ -1,0 +1,204 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // ice
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+
+    string heading = Model.GetElementValue("TrayHeading");
+    ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+    ICMSElement[] tabs = Model.Elements("ComponentTab", "Tab").ToArray();
+    string trayHtmlId = Model.GetElementValue("TrayID");
+
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+
+    // swiper uid
+    string swiperUid = string.Format("swiper-{0}", Model.GetHashCode());
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+    string headingColor = styles.Get("HeadingColor");
+    string headingGradientColor = styles.Get("HeadingGradientColor");
+    string textColor = styles.Get("TextColor");
+    /* string linkIcon = styles.Get("LinkIcon"); */
+    string imageStyle = styles.Get("ImageStyle");
+
+    /* bool showCtaText = Model.GetElementValue("ShowCTAText").ToLower() == "true"; */
+    /* string iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon; */
+    
+    Dictionary<String, String> buttonStyles;
+
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+    int buttonNumber = 0;
+
+    string buttonBgColor = "";
+    string buttonTextColor = "";
+    string buttonBorderColor = "";
+    string buttonBgColorHover = "";
+    string buttonTextColorHover = "";
+    string buttonBorderColorHover = "";
+
+    bool showCtaText = false;
+    string linkIcon = "";
+
+    string iconClass = "";
+    bool singleCtaButton = false;
+
+    <section class="tray tray-tabs @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true) @_Cisco_Helpers.HtmlAttribute("id", trayHtmlId)>
+      <div class="bg-radial opacity-70 @trayBgGradientColor @trayBgGradientOrientation"></div>
+      <div class="container @swiperUid">
+        <div class="row justify-content-between">
+
+          @if (!string.IsNullOrWhiteSpace(heading))
+          {
+            if (cta == null)
+            {
+              <div class="col-md-12">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+
+            if (cta != null)
+            {
+              <div class="col-md-8 col-xl-7">
+                <h2 @_Helpers.RenderICEAttribute(headingEl) @_Cisco_Helpers.HtmlAttribute("class", headingColor, headingGradientColor)>
+                  @_Cisco_Functions.AllowHtmlInTextElement(heading)
+                </h2>
+              </div>
+            }
+          }
+
+          @if (cta != null)
+          {
+            <div class="col-auto">
+              @{
+                buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+                buttonBgColor = buttonStyles.Get("ButtonBgColor");
+                buttonTextColor = buttonStyles.Get("ButtonTextColor");
+                buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+                buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+                buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+                buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+                showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+                linkIcon = buttonStyles.Get("LinkIcon");
+
+                iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+                singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+                if (singleCtaButton)
+                {
+                  <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+
+                  buttonNumber++;
+                }
+
+                if (!singleCtaButton)
+                {
+                  <p>@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+                }
+              }
+            </div>
+          }
+        </div>
+
+        @if (hasCopy)
+        {
+          <div class="row">
+            <div class="col-md-8 col-lg-6">
+              <div class="font-size-lg">
+                @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (tabs.Any())
+        {
+          <div class="gutter-offset-wrap overflow-hidden">
+            <div class="row row-gutter-64 align-items-end">
+              <div class="col-lg-7">
+                <div class="accordion-tabs-imgs img-wrap d-none d-lg-block">
+
+                  @foreach (ICMSElement tab in tabs)
+                  {
+                    ICMSElement desktopImage = tab.Element("ImageAsset", "Image");
+
+                    if (desktopImage != null)
+                    {
+                      string identifier = string.Format("accordion-tab-img-{0}", tab.GetHashCode());
+                      @_Cisco_Helpers.RenderImageAsset(desktopImage, Url, "round", identifier)
+                    }
+                  }
+                </div>
+              </div>
+              <div class="col-lg-5">
+                <div class="accordion-tabs">
+                  @foreach (ICMSElement tab in tabs)
+                  {
+                    // TODO: austin - remove subheading from schema
+                    ICMSElement titleEl = tab.Element("Title");
+                    ICMSElement introTextEl = tab.Element("IntroText");
+                    ICMSLinkElement tabCta = tab.GetLinkItem("CalltoAction");
+                    ICMSElement mobileImage = tab.Element("ImageAsset", "Image");
+
+                    string title = tab.GetElementValue("Title");
+                    string identifier = string.Format("accordion-tab-img-{0}", tab.GetHashCode());
+
+                    <div class="tab">
+                      @if (!string.IsNullOrWhiteSpace(title))
+                      {
+                        <div class="font-size-lg">
+                          <a class="toggle" href="#@identifier" @_Helpers.RenderICEAttribute(titleEl)>@title</a>
+                        </div>
+                      }
+                      <div class="content">
+                        <p class="img-wrap d-lg-none">
+                          @_Cisco_Helpers.RenderImageAsset(mobileImage, Url, imageStyle, identifier)
+                        </p>
+
+                        @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        <div class="spacer-40"></div>
+      </div>
+      <script>
+                (function (swiperUid) {
+                    $(`.${swiperUid} .accordion-tabs .tab .toggle`).click(function (e) {
+                        e.preventDefault();
+                        const tabImg = $(this).attr('href');
+                        $(`.${swiperUid} .accordion-tabs`).find('.tab').addClass('closed');
+                        $(this).closest('.tab').removeClass('closed');
+                        $(`.${swiperUid} .accordion-tabs-imgs img`).hide();
+                        $(tabImg).fadeIn(200);
+                    });
+                })("@swiperUid")
+      </script>
+    </section>
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}

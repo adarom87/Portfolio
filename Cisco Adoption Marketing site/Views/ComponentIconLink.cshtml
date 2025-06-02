@@ -1,0 +1,18 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    @LoggerService.Debug(Model)
+
+    ICMSElement image = Model.Element("ImageAsset");
+    ICMSLinkElement link = Model.GetLinkItem("URL");
+
+    <a href="@_Functions.GetLinkAction(link, Url)"
+       title="@_Functions.GetLinkName(link)"
+       target="@_Functions.GetLinkTarget(link)">
+
+        @_Cisco_Helpers.RenderImageAsset(image, Url)
+    </a>
+}

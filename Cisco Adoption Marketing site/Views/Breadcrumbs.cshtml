@@ -1,0 +1,78 @@
+﻿@model CMSPageRequest
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+    bool showBreadcrumbs = Model.GetElementValue("ShowBreadcrumbNavigation").ToLower() == "true";
+
+    if (showBreadcrumbs)
+    {
+        ICMSLinkElement[] breadcrumbs = _Cisco_Functions.GetAncestorNavigation(Model);
+        bool isFullWidth = Model.RootElementName != "DetailPage";
+
+        if (isFullWidth)
+        {
+            @FullWidthCrumbs(breadcrumbs)
+        }
+        else
+        {
+            @NarrowCrumbs(breadcrumbs)
+        }
+
+    }
+
+}
+
+@helper FullWidthCrumbs(ICMSLinkElement[] breadcrumbs)
+{
+
+    if (breadcrumbs != null && breadcrumbs.Any())
+    {
+        <div class="tray tray-crumbs tray-crumbs-full">
+            <div class="container">
+                <div class="crumbs">
+                    @foreach (ICMSLinkElement crumb in breadcrumbs)
+                    {
+                        if (crumb == breadcrumbs.LastOrDefault())
+                        {
+                            <span class="active">@crumb.Name</span>
+                            continue;
+                        }
+
+                        @_Helpers.RenderCMSLink(crumb, Url);
+                        <span class="pipe">/</span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@helper NarrowCrumbs(ICMSLinkElement[] breadcrumbs)
+{
+    if (breadcrumbs != null && breadcrumbs.Any())
+    {
+        <div class="tray tray-crumbs">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        <div class="crumbs">
+                            @foreach (ICMSLinkElement crumb in breadcrumbs)
+                            {
+                                if (crumb == breadcrumbs.LastOrDefault())
+                                {
+                                    <span class="active">@crumb.Name</span>
+                                    continue;
+                                }
+
+                                @_Helpers.RenderCMSLink(crumb, Url);
+                                <span class="pipe">/</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}

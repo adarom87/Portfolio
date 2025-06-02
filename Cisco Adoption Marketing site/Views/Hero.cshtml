@@ -1,0 +1,169 @@
+﻿@model ICMSElement
+@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+
+@if (Model != null)
+{
+  try
+  {
+    @LoggerService.Debug(Model)
+
+    // ice
+    ICMSElement headingEl = Model.Element("TrayHeading");
+    ICMSElement leadinTextEl = Model.Element("TrayLeadinText");
+    ICMSElement introTextEl = Model.Element("TrayIntroText");
+
+    ICMSElement bgImage = Model.Element("ImageAsset", "TrayBackgroundImage");
+    string heading = Model.GetElementValue("TrayHeading");
+    ICMSLinkElement cta = Model.GetLinkItem("TrayCalltoAction");
+    ICMSElement flexRowComp = Model.Element(null, "FlexRow");
+
+    bool hasCopy = _Cisco_Functions.HasCopy(leadinTextEl);
+    bool hasIntro = _Cisco_Functions.HasCopy(introTextEl);
+
+    // styles
+    Dictionary<String, String> styles = ComponentVariationWrapper.GetCustomStyles(Model);
+
+    string trayBgColor = styles.Get("TrayBGColor");
+    string trayBgGradientColor = styles.Get("TrayBGGradientColor");
+    string trayBgGradientOrientation = styles.Get("TrayBGGradientOrientation");
+    string trayBgImagePosition = styles.Get("TrayBGImagePosition");
+    string trayBgImageOpacityPercentage = styles.Get("TrayBGImageOpacityPercentage");
+    string textColor = styles.Get("TextColor");
+
+    Dictionary<String, String> buttonStyles;
+
+    ICMSElement[] buttonStylingObjects = Model.Elements("ButtonStyling").ToArray();
+
+    int buttonNumber = 0;
+
+    string buttonBgColor = "";
+    string buttonTextColor = "";
+    string buttonBorderColor = "";
+    string buttonBgColorHover = "";
+    string buttonTextColorHover = "";
+    string buttonBorderColorHover = "";
+
+    bool showCtaText = false;
+    string linkIcon = "";
+
+    string iconClass = "";
+    bool singleCtaButton = false;
+
+
+<section class="tray tray-hero @trayBgColor @textColor" @_Helpers.RenderICEAttribute(Model, true)>
+
+  <div class="bg-radial @trayBgGradientColor @trayBgGradientOrientation opacity-70"></div>
+
+  @if (bgImage != null)
+  {
+    <div class="bg-img @trayBgImageOpacityPercentage">
+      @_Cisco_Helpers.RenderImageAsset(bgImage, Url, trayBgImagePosition)
+    </div>
+  }
+  <div class="container">
+    <div class="row justify-content-between">
+
+
+      @if (hasCopy || cta != null)
+      {
+
+        if (!string.IsNullOrWhiteSpace(heading))
+
+        {
+          <div class="col-md-8">
+            <p class="h1" @_Helpers.RenderICEAttribute(headingEl)>
+              @_Cisco_Functions.AllowHtmlInTextElement(heading)
+            </p>
+          </div>
+        }
+
+    <div class="col-md-4">
+      @if (hasCopy)
+      {
+        <div class="col-md-12">
+          <div class="margin-16 font-size-lg text-align-right">
+            @{ Html.RenderPartial("Editable/RawHtml", leadinTextEl); }
+          </div>
+        </div>
+      }
+
+
+
+      @if (cta != null)
+      {
+        <div class="col-md-12">          
+
+            @if (cta != null)
+            {
+              buttonStyles = ComponentVariationWrapper.GetCustomStyles(buttonStylingObjects[buttonNumber]);
+
+              buttonBgColor = buttonStyles.Get("ButtonBgColor");
+              buttonTextColor = buttonStyles.Get("ButtonTextColor");
+              buttonBorderColor = buttonStyles.Get("ButtonBorderColor");
+              buttonBgColorHover = buttonStyles.Get("ButtonBgColorHover");
+              buttonTextColorHover = buttonStyles.Get("ButtonTextColorHover");
+              buttonBorderColorHover = buttonStyles.Get("ButtonBorderColorHover");
+              showCtaText = buttonStylingObjects[buttonNumber].GetElementValue("ShowCTAText").ToLower() == "true";
+
+              linkIcon = buttonStyles.Get("LinkIcon");
+
+              iconClass = showCtaText ? string.Format("icon {0}", linkIcon) : linkIcon;
+              singleCtaButton = buttonStylingObjects[buttonNumber].GetElementValue("DisplaySingularCTAasButton").ToLower() == "true";
+
+              if (singleCtaButton)
+              {
+              <p class="text-align-right">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format("button button-manual {0} {1} {2} {3} {4} {5}", buttonBgColor, buttonTextColor, buttonBorderColor, buttonBgColorHover, buttonTextColorHover, buttonBorderColorHover), showLinkText: showCtaText)</p>
+
+              buttonNumber++;
+            }
+
+            if (!singleCtaButton)
+            {
+              <p class="text-align-right">@_Cisco_Helpers.RenderCMSLinkWithIcon(cta, Url, iconClass, cssClasses: string.Format(""), showLinkText: showCtaText)</p>
+            }
+
+            }
+            
+          </div>
+      }
+
+    </div>
+
+      }
+
+
+      @if (!hasCopy && cta == null)
+      {
+
+        if (!string.IsNullOrWhiteSpace(heading))
+        {
+          <div class="col-md-12">
+            <p class="h1" @_Helpers.RenderICEAttribute(headingEl)>
+              @_Cisco_Functions.AllowHtmlInTextElement(heading)
+            </p>
+          </div>
+        }
+      }
+
+    </div>
+
+    @if (hasIntro)
+    {
+      <div class="font-size-lg restrict-66">
+        @{ Html.RenderPartial("Editable/RawHtml", introTextEl); }
+      </div>
+    }
+
+    @if (flexRowComp != null)
+    {
+      Html.RenderPartial("Editable/ComponentFlexRow", flexRowComp);
+    }
+  </div>
+</section>
+  }
+  catch (Exception e)
+  {
+    @LoggerService.LogViewError(Model, e)
+  }
+}

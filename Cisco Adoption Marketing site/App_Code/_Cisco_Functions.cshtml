@@ -1,0 +1,423 @@
+﻿@using Ingeniux.Runtime
+@using Ingeniux.Runtime.Models
+@using SquishIt.Framework
+@using System.Collections.Generic
+@using System.Collections.Specialized
+@using System.Dynamic
+@using System.Web.Caching
+@using System.Web.UI.WebControls
+@using System.Text
+
+@functions{
+
+    public static bool AllCardsHaveSingleCta(IEnumerable<ICMSElement> cards)
+    {
+        if (cards == null)
+            return false;
+
+        foreach (ICMSElement card in cards)
+        {
+            ICMSLinkElement[] ctas = card.GetLinkItems("CalltoAction").ToArray();
+
+            if (ctas.Length > 1)
+                return false;
+        }
+
+        return true;
+    }
+
+    public static HtmlString AllowHtmlInTextElement(string value)
+    {
+        return new HtmlString(value + "");
+    }
+
+    public static string BaseUrl(bool appendTrailingSlash = true)
+    {
+        string urlScheme = !string.IsNullOrWhiteSpace(Request.ServerVariables["HTTP_X_FORWARDED_PROTO"]) ? Request.ServerVariables["HTTP_X_FORWARDED_PROTO"] : Request.Url.Scheme;
+        string baseUrl = string.Format("{0}://{1}{2}{3}", urlScheme, Request.Url.Host, Request.Url.IsDefaultPort ? "" : ":" + Request.Url.Port, Request.ApplicationPath);
+
+        baseUrl = baseUrl.TrimEnd('/');
+
+        if (appendTrailingSlash)
+            baseUrl += "/";
+
+        return baseUrl;
+    }
+
+    public static HtmlString BundleScripts()
+    {
+        return new HtmlString(Bundle.JavaScript()
+            .Add("~/Content/assets/js/scripts.js")
+            .Add("~/Content/assets/js/igxdev.js")
+            .Render("~/Content/assets/js/bundle-#.js"));
+    }
+
+    public static HtmlString BundleStyles()
+    {
+        return new HtmlString(Bundle.Css()
+            .Add("~/Content/assets/css/main.css")
+            .Add("~/Content/assets/css/igxdev.css")
+            .Render("~/Content/assets/css/bundle-#.css"));
+    }
+
+    public static string Ellipsis(string source, int maxCharacters)
+    {
+        if (string.IsNullOrWhiteSpace(source) || source.Length < maxCharacters)
+            return source;
+
+        var sb = new StringBuilder();
+        var allWords = source.Split(' ');
+
+        var inHtmlTag = false;
+
+        foreach (var word in allWords)
+        {
+            // reasonably within a htmltag
+            if (!word.EndsWith(" />") && word.StartsWith("<") && word.EndsWith(">"))
+                inHtmlTag = true;
+
+            sb.Append(" " + word);
+
+            if (sb.Length >= maxCharacters)
+            {
+                // ensure tag is closed
+                if (inHtmlTag)
+                    continue;
+
+                // tag closed
+                if (word.EndsWith(" />"))
+                    break;
+            }
+        }
+
+        return string.Concat(sb.ToString().SubstringBefore(" ", true), "...");
+
+    }
+
+    public static string ForceCropBrandfolderImage(string cdnUrl)
+    {
+        var cropped = string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(cdnUrl))
+        {
+            string url = cdnUrl.SubstringBefore("?");
+            string query = cdnUrl.SubstringAfter("?");
+
+            NameValueCollection paramsByKey = HttpUtility.ParseQueryString(query);
+
+            // force 1:1 height:width
+            bool hasDimensionsSet = !string.IsNullOrWhiteSpace(paramsByKey.Get("width"));
+
+            if (hasDimensionsSet)
+            {
+                string width = paramsByKey.Get("width");
+                paramsByKey.Set("height", width);
+            }
+            else
+            {
+                // force max dimensions
+                paramsByKey.Add("width", "1000");
+                paramsByKey.Add("height", "1000");
+            }
+
+            // force crop to maintain aspect ratio
+            paramsByKey.Add(new NameValueCollection() { { "fit", "crop" } });
+
+            string rebuiltUrl = string.Format("{0}?{1}", url, paramsByKey);
+
+            cropped = HttpUtility.UrlDecode(rebuiltUrl);
+        }
+
+        return cropped;
+    }
+
+    public static ICMSElement GetAnnouncementBanner(CMSPageRequest model)
+    {
+        ICMSElement announcement = null;
+        if (model != null)
+        {
+            ICMSElement siteControl = GetSiteControl(model);
+            ICMSElement pageAnnouncement = model.Element("AnnouncementBanner");
+            ICMSElement globalAnnouncement = siteControl != null ? siteControl.Element("AnnouncementBanner") : null;
+
+            // priority: global > page
+            announcement = globalAnnouncement ?? pageAnnouncement ?? announcement;
+        }
+        return announcement;
+    }
+
+    public static ICMSLinkElement[] GetAncestorNavigation(CMSPageRequest page)
+    {
+        return page != null ?
+            page.GetNavigationItems("AncestorNavigation")
+                .Where(l => l.Schema != "Folder")
+                .ToArray()
+            : Array.Empty<ICMSLinkElement>();
+    }
+
+    public static Dictionary<string, string> GetFlexColumnRowClasses(string columnSplitSelection)
+    {
+        var classesByColumn = new Dictionary<string, string>();
+
+        if (!string.IsNullOrWhiteSpace(columnSplitSelection))
+        {
+            // options: 33:67 | 50:50 | 67:33
+            string leftColumnValue = columnSplitSelection.SubstringBefore(":");
+            string rightColumnValue = columnSplitSelection.SubstringAfter(":");
+
+            switch (leftColumnValue)
+            {
+                case "33":
+                    classesByColumn.Add("leftColClass", "col-md-4");
+                    break;
+                default:
+                case "50":
+                    classesByColumn.Add("leftColClass", "col-md-6");
+                    break;
+                case "67":
+                    classesByColumn.Add("leftColClass", "col-md-8");
+                    break;
+            }
+
+            switch (rightColumnValue)
+            {
+                case "33":
+                    classesByColumn.Add("rightColClass", "col-md-4");
+                    break;
+                default:
+                case "50":
+                    classesByColumn.Add("rightColClass", "col-md-6");
+                    break;
+                case "67":
+                    classesByColumn.Add("rightColClass", "col-md-8");
+                    break;
+            }
+        }
+
+        return classesByColumn;
+    }
+
+    public static string GetImageAssetFullPath(ICMSElement imageAssetComp)
+    {
+        var fullPath = string.Empty;
+
+        if (imageAssetComp != null && imageAssetComp.RootElementName == "ImageAsset")
+        {
+            ICMSElement cmsImage = imageAssetComp.Element("ImageCMS");
+            string brandFolderCDN = imageAssetComp.GetElementValue("ImageBrandfolderCDN");
+
+            if (cmsImage != null && !string.IsNullOrWhiteSpace(cmsImage.Value))
+            {
+                fullPath = string.Format("{0}{1}", BaseUrl(false), cmsImage.Value);
+            }
+            else if (!string.IsNullOrWhiteSpace(brandFolderCDN))
+            {
+                fullPath = brandFolderCDN;
+            }
+        }
+
+        return fullPath;
+    }
+
+    public class ImageAssetDimensions
+    {
+        public string Height { get; set; }
+        public string Width { get; set; }
+    }
+
+    public static ImageAssetDimensions GetImageAssetDimensions(ICMSElement imageAssetComp, bool isCmsAsset)
+    {
+        return isCmsAsset ? GetCmsImageAssetSize(imageAssetComp) : GetCdnImageAssetSize(imageAssetComp);
+    }
+
+    private static ImageAssetDimensions GetCmsImageAssetSize(ICMSElement imageAssetComp)
+    {
+        var dimensions = new ImageAssetDimensions();
+        // debug
+        dimensions.Height = "IMAGE ASSET ERROR";
+        dimensions.Width = "Cisco_Functions.GetCmsImageAssetSize";
+
+        if (imageAssetComp != null)
+        {
+            ICMSElement cmsImage = imageAssetComp.Element("ImageCMS");
+            if (cmsImage != null)
+            {
+                dimensions.Height = cmsImage.GetAttributeValue("Height");
+                dimensions.Width = cmsImage.GetAttributeValue("Width");
+            }
+        }
+
+        return dimensions;
+    }
+
+    private static ImageAssetDimensions GetCdnImageAssetSize(ICMSElement imageAssetComp)
+    {
+        var dimensions = new ImageAssetDimensions();
+        // debug
+        dimensions.Height = "IMAGE ASSET ERROR";
+        dimensions.Width = "Cisco_Functions.GetCdnImageAssetSize";
+
+        string url = imageAssetComp != null ? imageAssetComp.GetElementValue("ImageBrandfolderCDN") : string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            string query = url.SubstringAfter("?");
+            NameValueCollection parsed = HttpUtility.ParseQueryString(query);
+
+            // get height or lock to 200px
+            dimensions.Height = parsed.Get("width") ?? "200";
+            // get the width, or set to auto to maintain aspect ratio
+            dimensions.Width = parsed.Get("height") ?? "auto";
+        }
+
+        return dimensions;
+    }
+
+    public static ICMSElement[] GetNavigationTabMenuItems(ICMSElement navigationTab)
+    {
+        ICMSElement[] menuItems = Array.Empty<ICMSElement>();
+
+        if (navigationTab != null)
+            menuItems = navigationTab
+                .Children()
+                .Where(c => c.GetAttributeValue("IsComponent") == "true")
+                .ToArray();
+
+        return menuItems;
+    }
+
+    public static ICMSLinkElement GetLinkFromSiteControl(CMSPageRequest pageObj, string linkName)
+    {
+        ICMSLinkElement link = null;
+        ICMSElement siteControl = GetSiteControl(pageObj);
+
+        if (siteControl != null)
+            link = siteControl.GetLinkItem(linkName, false);
+
+        return link;
+    }
+
+    public static ICMSElement[] GetPageTrays(CMSPageRequest model)
+    {
+        ICMSElement[] trays = Array.Empty<ICMSElement>();
+
+        if (model != null)
+            trays = model.Elements(null, "Tray") != null ? model.Elements(null, "Tray").ToArray() : trays;
+
+        return trays;
+    }
+
+    public static ICMSElement GetSiteControl(CMSPageRequest model, bool isCiscoEssentials = true)
+    {
+        string elementName = isCiscoEssentials ? "SiteControlEssentials" : "SiteControl";
+        ICMSElement siteControl = model != null ? model.Element(elementName) : null;
+
+        return siteControl;
+    }
+
+    public static bool HasCopy(ICMSElement element)
+    {
+        return element != null && !string.IsNullOrWhiteSpace(element.Value);
+    }
+
+    public static bool IsDebug()
+    {
+        return HttpContext.Current.IsDebuggingEnabled;
+    }
+
+    public static string RemoveQueryParametersByKey(string queryString, params string[] keys)
+    {
+        string updated = queryString;
+
+        if (!string.IsNullOrWhiteSpace(queryString) && keys != null && keys.Any())
+        {
+            NameValueCollection parsedQs = HttpUtility.ParseQueryString(queryString);
+            keys.ForEach(key => parsedQs.Remove(key));
+
+            updated = parsedQs.ToString();
+        }
+
+        return updated;
+    }
+
+    public static bool RenderTrayBorders(ICMSElement sitecontrol)
+    {
+        var shouldRender = false;
+
+        if (sitecontrol != null)
+            shouldRender = sitecontrol.GetElementValue("EnableTrayBorders").ToLower() == "true";
+
+        return shouldRender;
+    }
+
+    public static bool RenderGrouperTray(ICMSLinkElement[] sectionPages, ICMSElement model)
+    {
+        return sectionPages != null && sectionPages.FirstOrDefault(sp => sp.ID == model.Page.ID) != null;
+    }
+
+    public static string StringOrDefault(string source, string defaultStr)
+    {
+        return !string.IsNullOrWhiteSpace(source)
+            ? source
+            : defaultStr;
+    }
+
+    public static string GetCTAButtonColor (string trayBGColor, string ctaButtonColorChoice)
+    {
+        string ctaFinalColor = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(ctaButtonColorChoice))
+        {
+            ctaButtonColorChoice = "Default";
+        }
+
+        if (!string.IsNullOrWhiteSpace(trayBGColor))
+        {
+            switch (trayBGColor)
+            {
+                case "gray-d2":
+                    switch (ctaButtonColorChoice)
+                    {
+                        case "Default":
+                            ctaFinalColor = "button-hover-white";
+                            break;
+                        case "Alternate":
+                            ctaFinalColor = "button-outline-white";
+                            break;
+                    }
+                    break;
+
+                case "white":
+                    switch (ctaButtonColorChoice)
+                    {
+                        case "Default":
+                            ctaFinalColor = string.Empty;
+                            break;
+                        case "Alternate":
+                            ctaFinalColor = "button-outline-black";
+                            break;
+                    }
+                    break;
+
+                case "eucalyptus":
+                    switch (ctaButtonColorChoice)
+                    {
+                        case "Default":
+                            ctaFinalColor = "button-white";
+                            break;
+                        case "Alternate":
+                            ctaFinalColor = "button-outline-white";
+                            break;
+                    }
+                    break;
+                default:
+                    break;
+            }
+            return ctaFinalColor;
+        }
+
+
+        return string.Empty;
+    }
+
+}
